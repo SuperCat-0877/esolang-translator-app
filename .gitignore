@@ -64,3 +64,5 @@ langs_disabled/
 Thumbs.db
 .DS_Store
 desktop.ini
+# Build script (личное)
+build.ps1
