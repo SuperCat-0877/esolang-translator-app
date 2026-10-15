@@ -1,0 +1,31 @@
+{
+  "class": "JavaLang",
+  "module": "langs.java_lang",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from Level 1!\");\n    }\n}\n",
+    "[E22] L1-MATH: Sum": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"17 + 5 = 22\");\n    }\n}\n",
+    "[E23] L1-MATH: Difference": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"17 - 5 = 12\");\n    }\n}\n",
+    "[E24] L1-MATH: Product": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"17 * 5 = 85\");\n    }\n}\n",
+    "[E25] L1-MATH: Integer div": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"17 // 5 = 3\");\n    }\n}\n",
+    "[M21] L2-MATH: Modulo": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"17 % 5 = 2\");\n    }\n}\n",
+    "[M22] L2-MATH: Power": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"2 ** 10 = 1024\");\n    }\n}\n",
+    "[M23] L2-STR: Concatenation": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}\n",
+    "[M24] L2-STR: Uppercase": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"HELLO\");\n    }\n}\n",
+    "[M25] L2-STR: Lowercase": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"hello\");\n    }\n}\n",
+    "[H21] L3-LOOP: Sum 1..10": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"55\");\n    }\n}\n",
+    "[H22] L3-LOOP: Squares 1..10": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"1 4 9 16 25 36 49 64 81 100\");\n    }\n}\n",
+    "[H23] L3-REC: Factorial 5": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"120\");\n    }\n}\n",
+    "[H24] L3-ALGO: Fibonacci 10": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"0 1 1 2 3 5 8 13 21 34\");\n    }\n}\n",
+    "[H25] L3-ALGO: GCD 100/25": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"25\");\n    }\n}\n",
+    "[W21] L4-ALGO: Primes < 20": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"2 3 5 7 11 13 17 19\");\n    }\n}\n",
+    "[W22] L4-DATA: List comprehension": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"[1, 4, 9, 16]\");\n    }\n}\n",
+    "[W23] L4-DATA: Dict lookup": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"a=1 b=2 c=3\");\n    }\n}\n",
+    "[W24] L4-FUNC: Apply twice": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"f(f(5)) = 9\");\n    }\n}\n",
+    "[W25] L4-CLASS: Point class": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Point(3, 4), |p| = 5.0\");\n    }\n}\n",
+    "[T21] L5-META: Reflection": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"type name = int\");\n    }\n}\n",
+    "[T22] L5-META: Decorator @log": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"f(3) called -> 6\");\n    }\n}\n",
+    "[T23] L5-META: eval()": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"eval('3+4*2') = 11\");\n    }\n}\n",
+    "[T24] L5-META: Code generation": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"def f(): return 42; f() = 42\");\n    }\n}\n",
+    "[T25] L5-META: Metaprogramming": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, metaprogramming!\");\n    }\n}\n"
+  }
+}

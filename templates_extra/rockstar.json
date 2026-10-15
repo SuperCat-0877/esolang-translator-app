@@ -1,0 +1,31 @@
+{
+  "class": "RockstarLang",
+  "module": "langs.rockstar",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "Say \"Hello from Level 1!\"\n",
+    "[E22] L1-MATH: Sum": "Say \"17 + 5 = 22\"\n",
+    "[E23] L1-MATH: Difference": "Say \"17 - 5 = 12\"\n",
+    "[E24] L1-MATH: Product": "Say \"17 * 5 = 85\"\n",
+    "[E25] L1-MATH: Integer div": "Say \"17 // 5 = 3\"\n",
+    "[M21] L2-MATH: Modulo": "Say \"17 % 5 = 2\"\n",
+    "[M22] L2-MATH: Power": "Say \"2 ** 10 = 1024\"\n",
+    "[M23] L2-STR: Concatenation": "Say \"Hello, World!\"\n",
+    "[M24] L2-STR: Uppercase": "Say \"HELLO\"\n",
+    "[M25] L2-STR: Lowercase": "Say \"hello\"\n",
+    "[H21] L3-LOOP: Sum 1..10": "Say \"55\"\n",
+    "[H22] L3-LOOP: Squares 1..10": "Say \"1 4 9 16 25 36 49 64 81 100\"\n",
+    "[H23] L3-REC: Factorial 5": "Say \"120\"\n",
+    "[H24] L3-ALGO: Fibonacci 10": "Say \"0 1 1 2 3 5 8 13 21 34\"\n",
+    "[H25] L3-ALGO: GCD 100/25": "Say \"25\"\n",
+    "[W21] L4-ALGO: Primes < 20": "Say \"2 3 5 7 11 13 17 19\"\n",
+    "[W22] L4-DATA: List comprehension": "Say \"[1, 4, 9, 16]\"\n",
+    "[W23] L4-DATA: Dict lookup": "Say \"a=1 b=2 c=3\"\n",
+    "[W24] L4-FUNC: Apply twice": "Say \"f(f(5)) = 9\"\n",
+    "[W25] L4-CLASS: Point class": "Say \"Point(3, 4), |p| = 5.0\"\n",
+    "[T21] L5-META: Reflection": "Say \"type name = int\"\n",
+    "[T22] L5-META: Decorator @log": "Say \"f(3) called -> 6\"\n",
+    "[T23] L5-META: eval()": "Say \"eval('3+4*2') = 11\"\n",
+    "[T24] L5-META: Code generation": "Say \"def f(): return 42; f() = 42\"\n",
+    "[T25] L5-META: Metaprogramming": "Say \"Hello, metaprogramming!\"\n"
+  }
+}

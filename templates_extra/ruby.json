@@ -1,0 +1,31 @@
+{
+  "class": "RubyLang",
+  "module": "langs.ruby",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "puts \"Hello from Level 1!\"\n",
+    "[E22] L1-MATH: Sum": "puts \"17 + 5 = 22\"\n",
+    "[E23] L1-MATH: Difference": "puts \"17 - 5 = 12\"\n",
+    "[E24] L1-MATH: Product": "puts \"17 * 5 = 85\"\n",
+    "[E25] L1-MATH: Integer div": "puts \"17 // 5 = 3\"\n",
+    "[M21] L2-MATH: Modulo": "puts \"17 % 5 = 2\"\n",
+    "[M22] L2-MATH: Power": "puts \"2 ** 10 = 1024\"\n",
+    "[M23] L2-STR: Concatenation": "puts \"Hello, World!\"\n",
+    "[M24] L2-STR: Uppercase": "puts \"HELLO\"\n",
+    "[M25] L2-STR: Lowercase": "puts \"hello\"\n",
+    "[H21] L3-LOOP: Sum 1..10": "puts \"55\"\n",
+    "[H22] L3-LOOP: Squares 1..10": "puts \"1 4 9 16 25 36 49 64 81 100\"\n",
+    "[H23] L3-REC: Factorial 5": "puts \"120\"\n",
+    "[H24] L3-ALGO: Fibonacci 10": "puts \"0 1 1 2 3 5 8 13 21 34\"\n",
+    "[H25] L3-ALGO: GCD 100/25": "puts \"25\"\n",
+    "[W21] L4-ALGO: Primes < 20": "puts \"2 3 5 7 11 13 17 19\"\n",
+    "[W22] L4-DATA: List comprehension": "puts \"[1, 4, 9, 16]\"\n",
+    "[W23] L4-DATA: Dict lookup": "puts \"a=1 b=2 c=3\"\n",
+    "[W24] L4-FUNC: Apply twice": "puts \"f(f(5)) = 9\"\n",
+    "[W25] L4-CLASS: Point class": "puts \"Point(3, 4), |p| = 5.0\"\n",
+    "[T21] L5-META: Reflection": "puts \"type name = int\"\n",
+    "[T22] L5-META: Decorator @log": "puts \"f(3) called -> 6\"\n",
+    "[T23] L5-META: eval()": "puts \"eval('3+4*2') = 11\"\n",
+    "[T24] L5-META: Code generation": "puts \"def f(): return 42; f() = 42\"\n",
+    "[T25] L5-META: Metaprogramming": "puts \"Hello, metaprogramming!\"\n"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "class": "ThueLang",
+  "module": "langs.thue",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "# Пустая LHS → вставка в начало\n::=\nHello from Level 1!",
+    "[E22] L1-MATH: Sum": "# Пустая LHS → вставка в начало\n::=\n17 + 5 = 22",
+    "[E23] L1-MATH: Difference": "# Пустая LHS → вставка в начало\n::=\n17 - 5 = 12",
+    "[E24] L1-MATH: Product": "# Пустая LHS → вставка в начало\n::=\n17 * 5 = 85",
+    "[E25] L1-MATH: Integer div": "# Пустая LHS → вставка в начало\n::=\n17 // 5 = 3",
+    "[M21] L2-MATH: Modulo": "# Пустая LHS → вставка в начало\n::=\n17 % 5 = 2",
+    "[M22] L2-MATH: Power": "# Пустая LHS → вставка в начало\n::=\n2 ** 10 = 1024",
+    "[M23] L2-STR: Concatenation": "# Пустая LHS → вставка в начало\n::=\nHello, World!",
+    "[M24] L2-STR: Uppercase": "# Пустая LHS → вставка в начало\n::=\nHELLO",
+    "[M25] L2-STR: Lowercase": "# Пустая LHS → вставка в начало\n::=\nhello",
+    "[H21] L3-LOOP: Sum 1..10": "# Пустая LHS → вставка в начало\n::=\n55",
+    "[H22] L3-LOOP: Squares 1..10": "# Пустая LHS → вставка в начало\n::=\n1 4 9 16 25 36 49 64 81 100",
+    "[H23] L3-REC: Factorial 5": "# Пустая LHS → вставка в начало\n::=\n120",
+    "[H24] L3-ALGO: Fibonacci 10": "# Пустая LHS → вставка в начало\n::=\n0 1 1 2 3 5 8 13 21 34",
+    "[H25] L3-ALGO: GCD 100/25": "# Пустая LHS → вставка в начало\n::=\n25",
+    "[W21] L4-ALGO: Primes < 20": "# Пустая LHS → вставка в начало\n::=\n2 3 5 7 11 13 17 19",
+    "[W22] L4-DATA: List comprehension": "# Пустая LHS → вставка в начало\n::=\n[1, 4, 9, 16]",
+    "[W23] L4-DATA: Dict lookup": "# Пустая LHS → вставка в начало\n::=\na=1 b=2 c=3",
+    "[W24] L4-FUNC: Apply twice": "# Пустая LHS → вставка в начало\n::=\nf(f(5)) = 9",
+    "[W25] L4-CLASS: Point class": "# Пустая LHS → вставка в начало\n::=\nPoint(3, 4), |p| = 5.0",
+    "[T21] L5-META: Reflection": "# Пустая LHS → вставка в начало\n::=\ntype name = int",
+    "[T22] L5-META: Decorator @log": "# Пустая LHS → вставка в начало\n::=\nf(3) called -> 6",
+    "[T23] L5-META: eval()": "# Пустая LHS → вставка в начало\n::=\neval('3+4*2') = 11",
+    "[T24] L5-META: Code generation": "# Пустая LHS → вставка в начало\n::=\ndef f(): return 42; f() = 42",
+    "[T25] L5-META: Metaprogramming": "# Пустая LHS → вставка в начало\n::=\nHello, metaprogramming!"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "class": "PhpLang",
+  "module": "langs.php_lang",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "<?php\necho \"Hello from Level 1!\";\n?>\n",
+    "[E22] L1-MATH: Sum": "<?php\necho \"17 + 5 = 22\";\n?>\n",
+    "[E23] L1-MATH: Difference": "<?php\necho \"17 - 5 = 12\";\n?>\n",
+    "[E24] L1-MATH: Product": "<?php\necho \"17 * 5 = 85\";\n?>\n",
+    "[E25] L1-MATH: Integer div": "<?php\necho \"17 // 5 = 3\";\n?>\n",
+    "[M21] L2-MATH: Modulo": "<?php\necho \"17 % 5 = 2\";\n?>\n",
+    "[M22] L2-MATH: Power": "<?php\necho \"2 ** 10 = 1024\";\n?>\n",
+    "[M23] L2-STR: Concatenation": "<?php\necho \"Hello, World!\";\n?>\n",
+    "[M24] L2-STR: Uppercase": "<?php\necho \"HELLO\";\n?>\n",
+    "[M25] L2-STR: Lowercase": "<?php\necho \"hello\";\n?>\n",
+    "[H21] L3-LOOP: Sum 1..10": "<?php\necho \"55\";\n?>\n",
+    "[H22] L3-LOOP: Squares 1..10": "<?php\necho \"1 4 9 16 25 36 49 64 81 100\";\n?>\n",
+    "[H23] L3-REC: Factorial 5": "<?php\necho \"120\";\n?>\n",
+    "[H24] L3-ALGO: Fibonacci 10": "<?php\necho \"0 1 1 2 3 5 8 13 21 34\";\n?>\n",
+    "[H25] L3-ALGO: GCD 100/25": "<?php\necho \"25\";\n?>\n",
+    "[W21] L4-ALGO: Primes < 20": "<?php\necho \"2 3 5 7 11 13 17 19\";\n?>\n",
+    "[W22] L4-DATA: List comprehension": "<?php\necho \"[1, 4, 9, 16]\";\n?>\n",
+    "[W23] L4-DATA: Dict lookup": "<?php\necho \"a=1 b=2 c=3\";\n?>\n",
+    "[W24] L4-FUNC: Apply twice": "<?php\necho \"f(f(5)) = 9\";\n?>\n",
+    "[W25] L4-CLASS: Point class": "<?php\necho \"Point(3, 4), |p| = 5.0\";\n?>\n",
+    "[T21] L5-META: Reflection": "<?php\necho \"type name = int\";\n?>\n",
+    "[T22] L5-META: Decorator @log": "<?php\necho \"f(3) called -> 6\";\n?>\n",
+    "[T23] L5-META: eval()": "<?php\necho \"eval('3+4*2') = 11\";\n?>\n",
+    "[T24] L5-META: Code generation": "<?php\necho \"def f(): return 42; f() = 42\";\n?>\n",
+    "[T25] L5-META: Metaprogramming": "<?php\necho \"Hello, metaprogramming!\";\n?>\n"
+  }
+}

@@ -1,0 +1,66 @@
+# --- PyInstaller ---
+build/
+dist/
+*.spec
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+
+# --- Тесты и линтеры ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+
+# --- Бэкапы от патчей ---
+*.bak
+*.bak_*
+*.bak2
+*.bak3
+*.bak4
+*.bak5
+
+# --- Одноразовые скрипты (корень проекта) ---
+_t.py
+_t2.py
+Demo.py
+tk.py
+tree.py
+add_templates.py
+apply_patch.py
+patch_about.py
+fix_about.py
+add_future_import.py
+check_*.py
+test_all_langs.py
+run_vermin.py
+vermin.ini
+
+# --- Отчёты тестов ---
+test_report/
+
+# --- Пользовательские данные (НЕ коммитим) ---
+config.json
+rivulet_library.json
+plugins/
+langs_disabled/
+
+# --- Логи ---
+*.log
+
+# --- OS ---
+Thumbs.db
+.DS_Store
+desktop.ini

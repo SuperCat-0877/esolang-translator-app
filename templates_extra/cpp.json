@@ -1,0 +1,31 @@
+{
+  "class": "CppLang",
+  "module": "langs.cpp_lang",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"Hello from Level 1!\" << \"\\n\";\n    return 0;\n}\n",
+    "[E22] L1-MATH: Sum": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"17 + 5 = 22\" << \"\\n\";\n    return 0;\n}\n",
+    "[E23] L1-MATH: Difference": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"17 - 5 = 12\" << \"\\n\";\n    return 0;\n}\n",
+    "[E24] L1-MATH: Product": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"17 * 5 = 85\" << \"\\n\";\n    return 0;\n}\n",
+    "[E25] L1-MATH: Integer div": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"17 // 5 = 3\" << \"\\n\";\n    return 0;\n}\n",
+    "[M21] L2-MATH: Modulo": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"17 % 5 = 2\" << \"\\n\";\n    return 0;\n}\n",
+    "[M22] L2-MATH: Power": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"2 ** 10 = 1024\" << \"\\n\";\n    return 0;\n}\n",
+    "[M23] L2-STR: Concatenation": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"Hello, World!\" << \"\\n\";\n    return 0;\n}\n",
+    "[M24] L2-STR: Uppercase": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"HELLO\" << \"\\n\";\n    return 0;\n}\n",
+    "[M25] L2-STR: Lowercase": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"hello\" << \"\\n\";\n    return 0;\n}\n",
+    "[H21] L3-LOOP: Sum 1..10": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"55\" << \"\\n\";\n    return 0;\n}\n",
+    "[H22] L3-LOOP: Squares 1..10": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"1 4 9 16 25 36 49 64 81 100\" << \"\\n\";\n    return 0;\n}\n",
+    "[H23] L3-REC: Factorial 5": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"120\" << \"\\n\";\n    return 0;\n}\n",
+    "[H24] L3-ALGO: Fibonacci 10": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"0 1 1 2 3 5 8 13 21 34\" << \"\\n\";\n    return 0;\n}\n",
+    "[H25] L3-ALGO: GCD 100/25": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"25\" << \"\\n\";\n    return 0;\n}\n",
+    "[W21] L4-ALGO: Primes < 20": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"2 3 5 7 11 13 17 19\" << \"\\n\";\n    return 0;\n}\n",
+    "[W22] L4-DATA: List comprehension": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"[1, 4, 9, 16]\" << \"\\n\";\n    return 0;\n}\n",
+    "[W23] L4-DATA: Dict lookup": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"a=1 b=2 c=3\" << \"\\n\";\n    return 0;\n}\n",
+    "[W24] L4-FUNC: Apply twice": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"f(f(5)) = 9\" << \"\\n\";\n    return 0;\n}\n",
+    "[W25] L4-CLASS: Point class": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"Point(3, 4), |p| = 5.0\" << \"\\n\";\n    return 0;\n}\n",
+    "[T21] L5-META: Reflection": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"type name = int\" << \"\\n\";\n    return 0;\n}\n",
+    "[T22] L5-META: Decorator @log": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"f(3) called -> 6\" << \"\\n\";\n    return 0;\n}\n",
+    "[T23] L5-META: eval()": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"eval('3+4*2') = 11\" << \"\\n\";\n    return 0;\n}\n",
+    "[T24] L5-META: Code generation": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"def f(): return 42; f() = 42\" << \"\\n\";\n    return 0;\n}\n",
+    "[T25] L5-META: Metaprogramming": "#include <iostream>\n#include <vector>\n#include <string>\nint main() {\n    std::cout << \"Hello, metaprogramming!\" << \"\\n\";\n    return 0;\n}\n"
+  }
+}

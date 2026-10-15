@@ -1,0 +1,31 @@
+{
+  "class": "CSharpLang",
+  "module": "langs.csharp_lang",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"Hello from Level 1!\");\n    }\n}\n",
+    "[E22] L1-MATH: Sum": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"17 + 5 = 22\");\n    }\n}\n",
+    "[E23] L1-MATH: Difference": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"17 - 5 = 12\");\n    }\n}\n",
+    "[E24] L1-MATH: Product": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"17 * 5 = 85\");\n    }\n}\n",
+    "[E25] L1-MATH: Integer div": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"17 // 5 = 3\");\n    }\n}\n",
+    "[M21] L2-MATH: Modulo": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"17 % 5 = 2\");\n    }\n}\n",
+    "[M22] L2-MATH: Power": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"2 ** 10 = 1024\");\n    }\n}\n",
+    "[M23] L2-STR: Concatenation": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"Hello, World!\");\n    }\n}\n",
+    "[M24] L2-STR: Uppercase": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"HELLO\");\n    }\n}\n",
+    "[M25] L2-STR: Lowercase": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"hello\");\n    }\n}\n",
+    "[H21] L3-LOOP: Sum 1..10": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"55\");\n    }\n}\n",
+    "[H22] L3-LOOP: Squares 1..10": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"1 4 9 16 25 36 49 64 81 100\");\n    }\n}\n",
+    "[H23] L3-REC: Factorial 5": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"120\");\n    }\n}\n",
+    "[H24] L3-ALGO: Fibonacci 10": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"0 1 1 2 3 5 8 13 21 34\");\n    }\n}\n",
+    "[H25] L3-ALGO: GCD 100/25": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"25\");\n    }\n}\n",
+    "[W21] L4-ALGO: Primes < 20": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"2 3 5 7 11 13 17 19\");\n    }\n}\n",
+    "[W22] L4-DATA: List comprehension": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"[1, 4, 9, 16]\");\n    }\n}\n",
+    "[W23] L4-DATA: Dict lookup": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"a=1 b=2 c=3\");\n    }\n}\n",
+    "[W24] L4-FUNC: Apply twice": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"f(f(5)) = 9\");\n    }\n}\n",
+    "[W25] L4-CLASS: Point class": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"Point(3, 4), |p| = 5.0\");\n    }\n}\n",
+    "[T21] L5-META: Reflection": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"type name = int\");\n    }\n}\n",
+    "[T22] L5-META: Decorator @log": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"f(3) called -> 6\");\n    }\n}\n",
+    "[T23] L5-META: eval()": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"eval('3+4*2') = 11\");\n    }\n}\n",
+    "[T24] L5-META: Code generation": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"def f(): return 42; f() = 42\");\n    }\n}\n",
+    "[T25] L5-META: Metaprogramming": "using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"Hello, metaprogramming!\");\n    }\n}\n"
+  }
+}

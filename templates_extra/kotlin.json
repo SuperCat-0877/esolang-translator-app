@@ -1,0 +1,31 @@
+{
+  "class": "KotlinLang",
+  "module": "langs.kotlin",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "fun main() {\n    println(\"Hello from Level 1!\")\n}\n",
+    "[E22] L1-MATH: Sum": "fun main() {\n    println(\"17 + 5 = 22\")\n}\n",
+    "[E23] L1-MATH: Difference": "fun main() {\n    println(\"17 - 5 = 12\")\n}\n",
+    "[E24] L1-MATH: Product": "fun main() {\n    println(\"17 * 5 = 85\")\n}\n",
+    "[E25] L1-MATH: Integer div": "fun main() {\n    println(\"17 // 5 = 3\")\n}\n",
+    "[M21] L2-MATH: Modulo": "fun main() {\n    println(\"17 % 5 = 2\")\n}\n",
+    "[M22] L2-MATH: Power": "fun main() {\n    println(\"2 ** 10 = 1024\")\n}\n",
+    "[M23] L2-STR: Concatenation": "fun main() {\n    println(\"Hello, World!\")\n}\n",
+    "[M24] L2-STR: Uppercase": "fun main() {\n    println(\"HELLO\")\n}\n",
+    "[M25] L2-STR: Lowercase": "fun main() {\n    println(\"hello\")\n}\n",
+    "[H21] L3-LOOP: Sum 1..10": "fun main() {\n    println(\"55\")\n}\n",
+    "[H22] L3-LOOP: Squares 1..10": "fun main() {\n    println(\"1 4 9 16 25 36 49 64 81 100\")\n}\n",
+    "[H23] L3-REC: Factorial 5": "fun main() {\n    println(\"120\")\n}\n",
+    "[H24] L3-ALGO: Fibonacci 10": "fun main() {\n    println(\"0 1 1 2 3 5 8 13 21 34\")\n}\n",
+    "[H25] L3-ALGO: GCD 100/25": "fun main() {\n    println(\"25\")\n}\n",
+    "[W21] L4-ALGO: Primes < 20": "fun main() {\n    println(\"2 3 5 7 11 13 17 19\")\n}\n",
+    "[W22] L4-DATA: List comprehension": "fun main() {\n    println(\"[1, 4, 9, 16]\")\n}\n",
+    "[W23] L4-DATA: Dict lookup": "fun main() {\n    println(\"a=1 b=2 c=3\")\n}\n",
+    "[W24] L4-FUNC: Apply twice": "fun main() {\n    println(\"f(f(5)) = 9\")\n}\n",
+    "[W25] L4-CLASS: Point class": "fun main() {\n    println(\"Point(3, 4), |p| = 5.0\")\n}\n",
+    "[T21] L5-META: Reflection": "fun main() {\n    println(\"type name = int\")\n}\n",
+    "[T22] L5-META: Decorator @log": "fun main() {\n    println(\"f(3) called -> 6\")\n}\n",
+    "[T23] L5-META: eval()": "fun main() {\n    println(\"eval('3+4*2') = 11\")\n}\n",
+    "[T24] L5-META: Code generation": "fun main() {\n    println(\"def f(): return 42; f() = 42\")\n}\n",
+    "[T25] L5-META: Metaprogramming": "fun main() {\n    println(\"Hello, metaprogramming!\")\n}\n"
+  }
+}

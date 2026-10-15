@@ -1,0 +1,57 @@
+{
+    "default": {
+        "name": "addition_assignment",
+        "note": "add to location, set to zero by default"
+    },
+    "0": {
+        "name": "overwrite",
+        "note": "assignment, overwriting existing value"
+    },
+    "1": {
+        "name": "insert",
+        "note": "inserts value after indicated cell (applied immediately)",
+        "list": {
+            "name": "append",
+            "note": "appends value to list"}    
+    },
+    "-1": 
+        {"name": "subtraction_assignment",
+        "note": "add/subtract, similar to the default addition_assignment"},
+    "2":
+        {"name": "multiplication_assignment",
+        "note": "multiply by supplied argument"},
+    "-2": 
+        {"name": "division_assignment",
+        "note": "add/subtract, similar to the default addition_assignment"},
+    "3": {
+        "name": "pop",
+        "note": "addition_assignment. for ref, also remove cell from ref_list",
+        "list": {
+            "name": "pop_and_append",
+            "note": "pop from ref_list and append to act_list"
+        }
+    },
+    "-3":{
+        "list": {
+            "name": "addition_assignment",
+            "note": "add to location, set to zero by default"}
+        },
+    "4":
+        {"name": "exponent_assignment",
+        "note": "raise to power of supplied argument"},
+    "-4": 
+        {"name": "root_assignment",
+        "note": "take root at power of supplied argument"},
+    "5": 
+        {"name": "mod_assignment",
+        "note": "modulus against supplied argument"},
+    "-5": 
+        {"name": "reverse_mod_assignment",
+        "note": "modulus against supplied argument"},
+    "6":
+        {"name": "reverse_subtraction_assignment",
+        "note": "subtract from supplied argument"},
+    "-6":
+        {"name": "reverse_division_assignment",
+        "note": "divide from supplied argument"}
+}

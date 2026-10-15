@@ -1,0 +1,31 @@
+{
+  "class": "WhitespaceLang",
+  "module": "langs.whitespace",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "",
+    "[E22] L1-MATH: Sum": "",
+    "[E23] L1-MATH: Difference": "",
+    "[E24] L1-MATH: Product": "",
+    "[E25] L1-MATH: Integer div": "",
+    "[M21] L2-MATH: Modulo": "",
+    "[M22] L2-MATH: Power": "",
+    "[M23] L2-STR: Concatenation": "",
+    "[M24] L2-STR: Uppercase": "",
+    "[M25] L2-STR: Lowercase": "",
+    "[H21] L3-LOOP: Sum 1..10": "",
+    "[H22] L3-LOOP: Squares 1..10": "",
+    "[H23] L3-REC: Factorial 5": "",
+    "[H24] L3-ALGO: Fibonacci 10": "",
+    "[H25] L3-ALGO: GCD 100/25": "",
+    "[W21] L4-ALGO: Primes < 20": "",
+    "[W22] L4-DATA: List comprehension": "",
+    "[W23] L4-DATA: Dict lookup": "",
+    "[W24] L4-FUNC: Apply twice": "",
+    "[W25] L4-CLASS: Point class": "",
+    "[T21] L5-META: Reflection": "",
+    "[T22] L5-META: Decorator @log": "",
+    "[T23] L5-META: eval()": "",
+    "[T24] L5-META: Code generation": "",
+    "[T25] L5-META: Metaprogramming": ""
+  }
+}

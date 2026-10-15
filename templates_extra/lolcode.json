@@ -1,0 +1,31 @@
+{
+  "class": "LolcodeLang",
+  "module": "langs.lolcode",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "HAI 1.2\nVISIBLE \"Hello from Level 1!\"\nKTHXBYE",
+    "[E22] L1-MATH: Sum": "HAI 1.2\nVISIBLE \"17 + 5 = 22\"\nKTHXBYE",
+    "[E23] L1-MATH: Difference": "HAI 1.2\nVISIBLE \"17 - 5 = 12\"\nKTHXBYE",
+    "[E24] L1-MATH: Product": "HAI 1.2\nVISIBLE \"17 * 5 = 85\"\nKTHXBYE",
+    "[E25] L1-MATH: Integer div": "HAI 1.2\nVISIBLE \"17 // 5 = 3\"\nKTHXBYE",
+    "[M21] L2-MATH: Modulo": "HAI 1.2\nVISIBLE \"17 % 5 = 2\"\nKTHXBYE",
+    "[M22] L2-MATH: Power": "HAI 1.2\nVISIBLE \"2 ** 10 = 1024\"\nKTHXBYE",
+    "[M23] L2-STR: Concatenation": "HAI 1.2\nVISIBLE \"Hello, World!\"\nKTHXBYE",
+    "[M24] L2-STR: Uppercase": "HAI 1.2\nVISIBLE \"HELLO\"\nKTHXBYE",
+    "[M25] L2-STR: Lowercase": "HAI 1.2\nVISIBLE \"hello\"\nKTHXBYE",
+    "[H21] L3-LOOP: Sum 1..10": "HAI 1.2\nVISIBLE \"55\"\nKTHXBYE",
+    "[H22] L3-LOOP: Squares 1..10": "HAI 1.2\nVISIBLE \"1 4 9 16 25 36 49 64 81 100\"\nKTHXBYE",
+    "[H23] L3-REC: Factorial 5": "HAI 1.2\nVISIBLE \"120\"\nKTHXBYE",
+    "[H24] L3-ALGO: Fibonacci 10": "HAI 1.2\nVISIBLE \"0 1 1 2 3 5 8 13 21 34\"\nKTHXBYE",
+    "[H25] L3-ALGO: GCD 100/25": "HAI 1.2\nVISIBLE \"25\"\nKTHXBYE",
+    "[W21] L4-ALGO: Primes < 20": "HAI 1.2\nVISIBLE \"2 3 5 7 11 13 17 19\"\nKTHXBYE",
+    "[W22] L4-DATA: List comprehension": "HAI 1.2\nVISIBLE \"[1, 4, 9, 16]\"\nKTHXBYE",
+    "[W23] L4-DATA: Dict lookup": "HAI 1.2\nVISIBLE \"a=1 b=2 c=3\"\nKTHXBYE",
+    "[W24] L4-FUNC: Apply twice": "HAI 1.2\nVISIBLE \"f(f(5)) = 9\"\nKTHXBYE",
+    "[W25] L4-CLASS: Point class": "HAI 1.2\nVISIBLE \"Point(3, 4), |p| = 5.0\"\nKTHXBYE",
+    "[T21] L5-META: Reflection": "HAI 1.2\nVISIBLE \"type name = int\"\nKTHXBYE",
+    "[T22] L5-META: Decorator @log": "HAI 1.2\nVISIBLE \"f(3) called -> 6\"\nKTHXBYE",
+    "[T23] L5-META: eval()": "HAI 1.2\nVISIBLE \"eval('3+4*2') = 11\"\nKTHXBYE",
+    "[T24] L5-META: Code generation": "HAI 1.2\nVISIBLE \"def f(): return 42; f() = 42\"\nKTHXBYE",
+    "[T25] L5-META: Metaprogramming": "HAI 1.2\nVISIBLE \"Hello, metaprogramming!\"\nKTHXBYE"
+  }
+}

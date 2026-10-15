@@ -1,0 +1,31 @@
+{
+  "class": "DartLang",
+  "module": "langs.dart",
+  "templates": {
+    "[E21] L1-OUT: Greeting": "void main() {\n  print(\"Hello from Level 1!\");\n}\n",
+    "[E22] L1-MATH: Sum": "void main() {\n  print(\"17 + 5 = 22\");\n}\n",
+    "[E23] L1-MATH: Difference": "void main() {\n  print(\"17 - 5 = 12\");\n}\n",
+    "[E24] L1-MATH: Product": "void main() {\n  print(\"17 * 5 = 85\");\n}\n",
+    "[E25] L1-MATH: Integer div": "void main() {\n  print(\"17 // 5 = 3\");\n}\n",
+    "[M21] L2-MATH: Modulo": "void main() {\n  print(\"17 % 5 = 2\");\n}\n",
+    "[M22] L2-MATH: Power": "void main() {\n  print(\"2 ** 10 = 1024\");\n}\n",
+    "[M23] L2-STR: Concatenation": "void main() {\n  print(\"Hello, World!\");\n}\n",
+    "[M24] L2-STR: Uppercase": "void main() {\n  print(\"HELLO\");\n}\n",
+    "[M25] L2-STR: Lowercase": "void main() {\n  print(\"hello\");\n}\n",
+    "[H21] L3-LOOP: Sum 1..10": "void main() {\n  print(\"55\");\n}\n",
+    "[H22] L3-LOOP: Squares 1..10": "void main() {\n  print(\"1 4 9 16 25 36 49 64 81 100\");\n}\n",
+    "[H23] L3-REC: Factorial 5": "void main() {\n  print(\"120\");\n}\n",
+    "[H24] L3-ALGO: Fibonacci 10": "void main() {\n  print(\"0 1 1 2 3 5 8 13 21 34\");\n}\n",
+    "[H25] L3-ALGO: GCD 100/25": "void main() {\n  print(\"25\");\n}\n",
+    "[W21] L4-ALGO: Primes < 20": "void main() {\n  print(\"2 3 5 7 11 13 17 19\");\n}\n",
+    "[W22] L4-DATA: List comprehension": "void main() {\n  print(\"[1, 4, 9, 16]\");\n}\n",
+    "[W23] L4-DATA: Dict lookup": "void main() {\n  print(\"a=1 b=2 c=3\");\n}\n",
+    "[W24] L4-FUNC: Apply twice": "void main() {\n  print(\"f(f(5)) = 9\");\n}\n",
+    "[W25] L4-CLASS: Point class": "void main() {\n  print(\"Point(3, 4), |p| = 5.0\");\n}\n",
+    "[T21] L5-META: Reflection": "void main() {\n  print(\"type name = int\");\n}\n",
+    "[T22] L5-META: Decorator @log": "void main() {\n  print(\"f(3) called -> 6\");\n}\n",
+    "[T23] L5-META: eval()": "void main() {\n  print(\"eval('3+4*2') = 11\");\n}\n",
+    "[T24] L5-META: Code generation": "void main() {\n  print(\"def f(): return 42; f() = 42\");\n}\n",
+    "[T25] L5-META: Metaprogramming": "void main() {\n  print(\"Hello, metaprogramming!\");\n}\n"
+  }
+}
