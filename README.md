@@ -2,7 +2,7 @@
 
 **Многоязычная среда разработки для эзотерических и обычных языков программирования.**
 
-43 языка · 1806 направлений перевода · 38 тем · 2D-редакторы Rivulet и Piet
+43 языка · 1746 направлений перевода · 38 тем · 2D-редакторы Rivulet и Piet
 
 [![Release](https://img.shields.io/github/v/release/SuperCat-0877/esolang-translator-app)](https://github.com/SuperCat-0877/esolang-translator-app/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
