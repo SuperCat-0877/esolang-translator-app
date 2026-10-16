@@ -5,7 +5,10 @@
 [![Release](https://img.shields.io/github/v/release/SuperCat-0877/esolang-translator-app)](https://github.com/SuperCat-0877/esolang-translator-app/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Changelog](https://img.shields.io/badge/changelog-v2.6.0-blue)](CHANGELOG.md)
 
+Get-Item .\CHANGELOG.md
+Get-Content .\CHANGELOG.md | Select-Object -First 5
 ---
 
 ## Russian
