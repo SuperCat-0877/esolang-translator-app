@@ -41,7 +41,7 @@ tree.py
 add_templates.py
 apply_patch.py
 patch_about.py
-fix_about.py
+localize_about.py
 add_future_import.py
 check_*.py
 test_all_langs.py
@@ -64,5 +64,5 @@ langs_disabled/
 Thumbs.db
 .DS_Store
 desktop.ini
-# Build script (личное)
+# Build script (пїЅпїЅпїЅпїЅпїЅпїЅ)
 build.ps1

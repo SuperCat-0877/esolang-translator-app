@@ -29,6 +29,7 @@ UI_SETTINGS = {
     "listbox_theme": {},   # {"dark": {"bg":..., "fg":..., "select_bg":...}}
     "renamed_langs": {},   # {"ook": "Утиное", ...}
     "deleted_langs": [],   # ["ook", "malbolge_lite", ...]
+    "language": "en",
 }
 
 
@@ -69,6 +70,7 @@ def load():
         UI_SETTINGS["listbox_theme"] = ui.get("listbox_theme", {})
         UI_SETTINGS["renamed_langs"] = ui.get("renamed_langs", {})
         UI_SETTINGS["deleted_langs"] = ui.get("deleted_langs", [])
+        UI_SETTINGS["language"] = ui.get("language", "en")
 
         rebuild()
     except Exception as e:

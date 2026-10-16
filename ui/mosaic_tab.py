@@ -1,3 +1,4 @@
+from core.i18n import t as tr
 # ui/mosaic_tab.py
 """Вкладка «Мозаика».
 
@@ -101,7 +102,7 @@ class MosaicTab:
     def _build(self):
         lang_bar = ttk.Frame(self.parent)
         lang_bar.pack(fill="x", padx=6, pady=(6, 0))
-        ttk.Label(lang_bar, text="Язык:",
+        ttk.Label(lang_bar, text=tr("mz_lang"),
                   font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
         self.lang_var = tk.StringVar(value=LANG_TITLES[self.current_lang])
         self.lang_cb = ttk.Combobox(
@@ -114,24 +115,24 @@ class MosaicTab:
 
         top = ttk.Frame(self.parent)
         top.pack(fill="x", padx=6, pady=(6, 2))
-        ttk.Button(top, text="▶ Выполнить", command=self.run_mosaic,
+        ttk.Button(top, text=tr("mz_run"), command=self.run_mosaic,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(top, text="🗑 Очистить", command=self.clear_mosaic,
+        ttk.Button(top, text=tr("mz_clear"), command=self.clear_mosaic,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(top, text="↶ Удалить последний", command=self.pop_mosaic,
-                   style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Separator(top, orient="vertical").pack(side="left",
-                                                   fill="y", padx=6)
-        ttk.Button(top, text="💾 Сохранить PNG", command=self.save_png,
-                   style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(top, text="📂 Загрузить PNG", command=self.load_png,
+        ttk.Button(top, text=tr("mz_undo"), command=self.pop_mosaic,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
         ttk.Separator(top, orient="vertical").pack(side="left",
                                                    fill="y", padx=6)
-        ttk.Button(top, text="📋 Скопировать код", command=self.copy_code,
+        ttk.Button(top, text=tr("mz_save_png"), command=self.save_png,
+                   style="Smooth.TButton").pack(side="left", padx=(0, 4))
+        ttk.Button(top, text=tr("mz_load_png"), command=self.load_png,
+                   style="Smooth.TButton").pack(side="left", padx=(0, 4))
+        ttk.Separator(top, orient="vertical").pack(side="left",
+                                                   fill="y", padx=6)
+        ttk.Button(top, text=tr("mz_copy_code"), command=self.copy_code,
                    style="Smooth.TButton").pack(side="left")
 
-        self.status = ttk.Label(top, text="готово")
+        self.status = ttk.Label(top, text=tr("mz_done"))
         self.status.pack(side="right")
 
         main = ttk.Frame(self.parent)
@@ -141,12 +142,12 @@ class MosaicTab:
         main.columnconfigure(2, weight=0)
         main.rowconfigure(0, weight=1)
 
-        left = ttk.LabelFrame(main, text="Библиотека плиток", padding=4)
+        left = ttk.LabelFrame(main, text=tr("mz_lib"), padding=4)
         left.grid(row=0, column=0, sticky="nsw", padx=(0, 4))
 
         cat_bar = ttk.Frame(left)
         cat_bar.pack(fill="x", pady=(0, 4))
-        ttk.Label(cat_bar, text="Категория:").pack(side="left")
+        ttk.Label(cat_bar, text=tr("mz_category")).pack(side="left")
         self.cat_var = tk.StringVar(value="")
         self.cat_cb = ttk.Combobox(
             cat_bar, textvariable=self.cat_var,
@@ -154,7 +155,7 @@ class MosaicTab:
         self.cat_cb.pack(side="left", padx=4)
         self.cat_cb.bind("<<ComboboxSelected>>",
                          lambda e: self._cat_combobox_changed())
-        ttk.Button(cat_bar, text="+ Своя",
+        ttk.Button(cat_bar, text=tr("mz_custom"),
                    command=self._add_custom_tile,
                    style="Smooth.TButton").pack(side="right")
 
@@ -172,11 +173,11 @@ class MosaicTab:
         self.palette_list.bind("<Double-Button-1>",
                                lambda e: self.add_selected_tile())
 
-        ttk.Button(left, text="→ Добавить в мозаику",
+        ttk.Button(left, text=tr("mz_add"),
                    command=self.add_selected_tile,
                    style="Smooth.TButton").pack(fill="x", pady=(4, 0))
 
-        tpl_frame = ttk.LabelFrame(left, text="Шаблоны", padding=4)
+        tpl_frame = ttk.LabelFrame(left, text=tr("mz_templates"), padding=4)
         tpl_frame.pack(fill="x", pady=(6, 0))
         self.tpl_list = tk.Listbox(tpl_frame, width=22, height=8,
                                     font=("Consolas", 9),
@@ -190,11 +191,11 @@ class MosaicTab:
         self.tpl_list.bind("<Double-Button-1>",
                             lambda e: self.add_selected_template())
 
-        ttk.Button(left, text="→ Вставить шаблон",
+        ttk.Button(left, text=tr("mz_insert_tpl"),
                    command=self.add_selected_template,
                    style="Smooth.TButton").pack(fill="x", pady=(4, 0))
 
-        center = ttk.LabelFrame(main, text="Мозаика", padding=4)
+        center = ttk.LabelFrame(main, text=tr("mz_title"), padding=4)
         center.grid(row=0, column=1, sticky="nsew", padx=4)
         center.rowconfigure(0, weight=1)
         center.columnconfigure(0, weight=1)
@@ -212,7 +213,7 @@ class MosaicTab:
         vbar.grid(row=0, column=1, sticky="ns")
         hbar.grid(row=1, column=0, sticky="ew")
 
-        right = ttk.LabelFrame(main, text="Код", padding=4)
+        right = ttk.LabelFrame(main, text=tr("mz_code"), padding=4)
         right.grid(row=0, column=2, sticky="nse", padx=(4, 0))
 
         self.py_out = tk.Text(right, width=40, height=12,
@@ -220,7 +221,7 @@ class MosaicTab:
         self.py_out.pack(fill="both", expand=True)
         self.py_out.config(state="disabled")
 
-        ttk.Label(right, text="Вывод:").pack(anchor="w", pady=(6, 0))
+        ttk.Label(right, text=tr("mz_output")).pack(anchor="w", pady=(6, 0))
         self.exec_out = tk.Text(right, width=40, height=8,
                                 font=("Consolas", 10), wrap="word", bd=0)
         self.exec_out.pack(fill="both", expand=True)
@@ -360,7 +361,7 @@ class MosaicTab:
         if not mosaic:
             self.canvas.create_text(
                 220, 80,
-                text="Мозаика пуста.\nВыбери плитки слева.",
+                text=tr("mz_empty_hint"),
                 font=("Segoe UI", 11), fill="#888", justify="center")
             self.canvas.config(scrollregion=(0, 0, 440, 160))
             return

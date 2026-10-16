@@ -31,6 +31,7 @@ except ImportError:
 from core.registry import registry
 from core.themes import THEMES
 from ui.editor import HighlightedText
+from core.i18n import t as tr
 
 CODE_FONT = ("Consolas", 11)
 
@@ -64,7 +65,7 @@ class SandboxPanel(ttk.Frame):
             bar = ttk.Frame(self)
             bar.pack(fill="x", pady=(0, 4))
 
-            ttk.Label(bar, text="Язык:").pack(side="left", padx=(0, 4))
+            ttk.Label(bar, text=tr("sb_lang")).pack(side="left", padx=(0, 4))
             self.lang_cb = ttk.Combobox(
                 bar, values=[l.name for l in registry.all()],
                 state="readonly", width=14)
@@ -72,34 +73,34 @@ class SandboxPanel(ttk.Frame):
             self.lang_cb.bind("<<ComboboxSelected>>",
                               lambda e: self._on_lang_change())
 
-            ttk.Label(bar, text="Шаблон:").pack(side="left", padx=(0, 4))
+            ttk.Label(bar, text=tr("sb_tpl")).pack(side="left", padx=(0, 4))
             self.tpl_cb = ttk.Combobox(bar, values=[], state="readonly",
                                         width=30)
             self.tpl_cb.pack(side="left", padx=(0, 10))
             self.tpl_cb.bind("<<ComboboxSelected>>",
                              lambda e: self._on_tpl_change())
 
-            self.run_btn = ttk.Button(bar, text="▶ Запустить",
+            self.run_btn = ttk.Button(bar, text=tr("sb_run"),
                                       command=self.on_run,
                                       style="Smooth.TButton")
             self.run_btn.pack(side="left", padx=(0, 4))
 
-            self.exp_btn = ttk.Button(bar, text="🔍 Разобрать",
+            self.exp_btn = ttk.Button(bar, text=tr("sb_explain"),
                                       command=self.on_explain,
                                       style="Smooth.TButton")
             self.exp_btn.pack(side="left", padx=(0, 4))
 
-            self.clear_btn = ttk.Button(bar, text="Очистить",
+            self.clear_btn = ttk.Button(bar, text=tr("sb_clear"),
                                         command=self.on_clear,
                                         style="Smooth.TButton")
             self.clear_btn.pack(side="left", padx=(0, 4))
 
-            self.copy_btn = ttk.Button(bar, text="Копир. вывод",
+            self.copy_btn = ttk.Button(bar, text=tr("sb_copy_out"),
                                        command=self.on_copy_output,
                                        style="Smooth.TButton")
             self.copy_btn.pack(side="left", padx=(0, 4))
 
-            self.save_btn = ttk.Button(bar, text="Сохранить…",
+            self.save_btn = ttk.Button(bar, text=tr("sb_save"),
                                        command=self.on_save_output,
                                        style="Smooth.TButton")
             self.save_btn.pack(side="left")
@@ -122,7 +123,7 @@ class SandboxPanel(ttk.Frame):
         body.rowconfigure(1, weight=1)
         body.columnconfigure(0, weight=1)
 
-        ed_frame = ttk.LabelFrame(body, text="Код", padding=4)
+        ed_frame = ttk.LabelFrame(body, text=tr("sb_code"), padding=4)
         ed_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 4))
         ed_frame.rowconfigure(0, weight=1)
         ed_frame.columnconfigure(0, weight=1)
@@ -148,7 +149,7 @@ class SandboxPanel(ttk.Frame):
 
         # --- вкладка Вывод ---
         out_tab = ttk.Frame(bottom)
-        bottom.add(out_tab, text="Вывод")
+        bottom.add(out_tab, text=tr("sb_output_tab"))
         out_tab.rowconfigure(0, weight=1)
         out_tab.columnconfigure(0, weight=1)
 
@@ -168,7 +169,7 @@ class SandboxPanel(ttk.Frame):
 
         # --- вкладка Разбор ---
         exp_tab = ttk.Frame(bottom)
-        bottom.add(exp_tab, text="Разбор")
+        bottom.add(exp_tab, text=tr("sb_explain_tab"))
         exp_tab.rowconfigure(0, weight=1)
         exp_tab.columnconfigure(0, weight=1)
 
@@ -282,7 +283,7 @@ class SandboxPanel(ttk.Frame):
         if self.run_btn is not None:
             self.run_btn.config(state="disabled")
         if self.status_lbl is not None:
-            self.status_lbl.config(text="… выполняется")
+            self.status_lbl.config(text=tr("sb_running"))
 
         threading.Thread(target=self._run_thread,
                          args=(lang_name, code),
@@ -306,13 +307,13 @@ class SandboxPanel(ttk.Frame):
             self.run_btn.config(state="normal")
 
         if res is None:
-            self.set_output(f"! {err_text}\n", kind="ошибка")
+            self.set_output(f"! {err_text}\n", kind=tr("sb_error"))
             if self.app is not None:
                 self.app.log(f"! {err_text}")
             return
 
         if not res.ok:
-            self.set_output(f"! {res.error}\n", kind="ошибка")
+            self.set_output(f"! {res.error}\n", kind=tr("sb_error"))
             if self.app is not None:
                 self.app.log(f"! {lang_name}: {res.error}")
             return

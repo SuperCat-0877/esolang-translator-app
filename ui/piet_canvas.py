@@ -10,6 +10,7 @@ import base64
 import io
 import tkinter as tk
 from tkinter import ttk, filedialog
+from core.i18n import t as tr
 
 try:
     from PIL import Image, ImageTk
@@ -101,7 +102,7 @@ class PietCanvasTab:
         # ---------- верхняя панель с режимами ----------
         modes_bar = ttk.Frame(self.parent)
         modes_bar.pack(fill="x", padx=6, pady=(6, 0))
-        ttk.Label(modes_bar, text="Режим:",
+        ttk.Label(modes_bar, text=tr("rezhim_2"),
                   font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
         for mode in MODES:
             btn = ttk.Button(
@@ -129,9 +130,9 @@ class PietCanvasTab:
             font=("Segoe UI", 10, "bold"))
         self.header_lbl.pack(side="left")
 
-        ttk.Button(top, text="Очистить", command=self.clear,
+        ttk.Button(top, text=tr("ochistit_3"), command=self.clear,
                    style="Smooth.TButton").pack(side="right")
-        ttk.Button(top, text="Переключить вид", command=self._toggle_mode,
+        ttk.Button(top, text=tr("pereklyuchit_vid"), command=self._toggle_mode,
                    style="Smooth.TButton").pack(side="right", padx=(0, 4))
 
         # ---------- панель навигации ----------
@@ -145,7 +146,7 @@ class PietCanvasTab:
         ttk.Button(pbar, text="▶", width=3, command=self._tile_next,
                    style="Smooth.TButton").pack(side="left", padx=(0, 12))
 
-        ttk.Label(pbar, text="Зум:").pack(side="left", padx=(0, 4))
+        ttk.Label(pbar, text=tr("zum_2")).pack(side="left", padx=(0, 4))
         for z in (1, 2, 4, 8):
             ttk.Button(pbar, text=f"×{z}", width=3,
                        command=lambda zz=z: self._set_zoom(zz),
@@ -177,7 +178,7 @@ class PietCanvasTab:
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
 
         # ---------- правая панель: палитра ----------
-        ttk.Label(right, text="Палитра",
+        ttk.Label(right, text=tr("palitra"),
                   font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
         pal = ttk.Frame(right)
         pal.pack(fill="x", pady=(0, 8))
@@ -193,7 +194,7 @@ class PietCanvasTab:
 
         act = ttk.Frame(right)
         act.pack(fill="x", pady=(0, 8))
-        ttk.Label(act, text="Активный:").pack(side="left")
+        ttk.Label(act, text=tr("aktivnyy")).pack(side="left")
         self.active_preview = tk.Canvas(act, width=32, height=24, bd=1,
                                          highlightthickness=0)
         self.active_preview.pack(side="left", padx=6)
@@ -204,16 +205,16 @@ class PietCanvasTab:
 
         ttk.Separator(right, orient="horizontal").pack(fill="x", pady=8)
 
-        ttk.Button(right, text="⬅ Из ИС 1", command=self.from_editor,
+        ttk.Button(right, text=tr("iz_is_1"), command=self.from_editor,
                    style="Smooth.TButton").pack(fill="x", pady=2)
-        ttk.Button(right, text="⬅ Из ИС 2", command=self.from_editor2,
+        ttk.Button(right, text=tr("iz_is_2"), command=self.from_editor2,
                    style="Smooth.TButton").pack(fill="x", pady=2)
-        ttk.Button(right, text="➡ В ИС 1", command=self.to_editor,
+        ttk.Button(right, text=tr("v_is_1"), command=self.to_editor,
                    style="Smooth.TButton").pack(fill="x", pady=2)
-        ttk.Button(right, text="📂 Загрузить",
+        ttk.Button(right, text=tr("zagruzit"),
                    command=self.load_file,
                    style="Smooth.TButton").pack(fill="x", pady=2)
-        ttk.Button(right, text="💾 Сохранить PNG",
+        ttk.Button(right, text=tr("sohranit_png_2"),
                    command=self.save_file,
                    style="Smooth.TButton").pack(fill="x", pady=2)
 
@@ -521,7 +522,7 @@ class PietCanvasTab:
         self.canvas.create_text(
             250, 100, text=msg, font=("Segoe UI", 11),
             fill="#f66", width=400)
-        self.header_lbl.config(text="ошибка")
+        self.header_lbl.config(text=tr("oshibka_2"))
 
     # ---------- grid (редактор) ----------
     def _render_grid(self):
