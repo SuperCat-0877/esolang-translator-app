@@ -1,41 +1,48 @@
 # ui/app.py
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, colorchooser, simpledialog
-from io import BytesIO
-from pathlib import Path
-import os, sys
+import os
+import sys
 import re
 import importlib
+import json
+from pathlib import Path
 
-from core.registry import registry
 from core.template_types import (
-    TEMPLATE_TYPES, TYPE_BY_LABEL, ALL_LABELS,
     classify as _tpl_classify,
     reclassify as _tpl_reclassify,
 )
+from core.registry import registry
 from core.translate import translate
-from core.themes import THEMES, BASE_THEMES, CUSTOM_THEMES, rebuild, syntax_palette
+from core.themes import THEMES, BASE_THEMES, syntax_palette
+from core.i18n import t as tr, tf, set_lang, get_lang, available_langs
 from core.config import (
     save as save_config, load as load_config,
-    PLUGINS_DIR, DISABLED_DIR, UI_SETTINGS,
+    PLUGINS_DIR, UI_SETTINGS,
     disable_lang, enable_lang, list_disabled,
 )
 from core.plugins import load_plugin, discover as discover_plugins
 from ui.editor import HighlightedText
 
-try:
-    from PIL import Image, ImageTk
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
-
 CODE_FONT = ("Consolas", 11)
-MODES = [("О = О", "О", "О"), ("О = Э", "О", "Э"),
-         ("Э = О", "Э", "О"), ("Э = Э", "Э", "Э")]
-NO_MARK = " (нет)"
+
+
+def _modes() -> list[tuple[str, str, str]]:
+    """Отображаемые метки + внутренние коды категорий (О/Э)."""
+    r = tr("cat_regular")
+    e = tr("cat_esoteric")
+    return [
+        (f"{r} = {r}", "О", "О"),
+        (f"{r} = {e}", "О", "Э"),
+        (f"{e} = {r}", "Э", "О"),
+        (f"{e} = {e}", "Э", "Э"),
+    ]
 
 
 class App:
+    # ==========================================================
+    #  ИНИЦИАЛИЗАЦИЯ
+    # ==========================================================
     def __init__(self, root):
         self.root = root
         root.title("Esolang Translator")
@@ -43,31 +50,29 @@ class App:
         root.minsize(1000, 750)
 
         self.theme = "dark"
-        self._prev_dst = None
-        self._last_result = None
         self._term_expanded = False
         self.rivulet_canvas = None
         self.piet_canvas = None
         self._buttons = {}
+        self._sandbox_panels = []
+        self.sandbox = None
 
         registry.discover_builtin()
         discover_plugins()
         load_config()
+        set_lang(UI_SETTINGS.get('language', 'en'))
 
-        # ---- Универсальный fallback: TRANSPILERS[(src, dst)] для
-        #      всех 1560 пар. Гарантирует, что translate() никогда
-        #      не падает с KeyError. Медленный путь, но рабочий. ----
+        # Универсальный fallback: TRANSPILERS[(src, dst)] для всех пар.
         from core.universal_fallback import install as _install_uf
         _uf_added = _install_uf()
 
-        # Применить пользовательские имена языков
+        # Пользовательские имена языков
         for lang in registry.all():
             custom = UI_SETTINGS["renamed_langs"].get(lang.name)
             if custom:
                 lang.title = custom
 
-        # Переклассификация шаблонов: [1]→[E1], [Test]→[T1].
-        # Старые ключи удаляются, остаются только [E/M/H/W/T][N].
+        # Переклассификация шаблонов
         self._templates_stats = {}
         for lang in registry.all():
             old_keys = set(lang.templates.keys())
@@ -78,101 +83,111 @@ class App:
             self._templates_stats[lang.name] = (
                 len(old_keys), len(new_keys), removed, added)
 
-        # === SANDBOX-INIT ===
-
-        self._sandbox_panels = []
-
-        self.sandbox = None
-
-        # === /SANDBOX-INIT ===
-
         self._build()
-        self._sandbox_panels = []  # ← добавить
         self._apply_theme(self.theme)
         self._bind_hotkeys()
-        # закрытие — корректно гасим Executor
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)  # ← добавить
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.on_mode()
-        self.log("> готово. F1 — справка")
-        # Сводка переклассификации шаблонов
+        self.log("> " + tr("msg_ready"))
+
         renamed_langs = [
             name for name, (o, n, r, a)
-            in getattr(self, "_templates_stats", {}).items()
+            in self._templates_stats.items()
             if r or a
         ]
         if renamed_langs:
-            self.log(f"[templates] переклассифицировано: "
-                     f"{len(renamed_langs)} языков")
+            self.log("[templates] " + tf("msg_tpl_reclassified",
+                                          n=len(renamed_langs)))
             if _uf_added:
-                self.log(f"[translate] универсальных пар: {_uf_added}")
+                self.log("[translate] " + tf("msg_universal_pairs",
+                                              n=_uf_added))
 
     # ==========================================================
     #  ПОСТРОЕНИЕ ИНТЕРФЕЙСА
     # ==========================================================
     def _build(self):
-        # ---------- МЕНЮ ----------
+        self._build_menu()
+        self._build_toolbar()
+        self._build_terminal()
+        self._build_tabs()
+
+    # ---------- МЕНЮ ----------
+    def _build_menu(self):
         menubar = tk.Menu(self.root)
+
         fm = tk.Menu(menubar, tearoff=0)
-        fm.add_command(label="Открыть...", accelerator="Ctrl+O", command=self.do_open)
-        fm.add_command(label="Сохранить...", accelerator="Ctrl+S", command=self.do_save)
+        fm.add_command(label=tr("otkryt"), accelerator="Ctrl+O",
+                       command=self.do_open)
+        fm.add_command(label=tr("sohranit"), accelerator="Ctrl+S",
+                       command=self.do_save)
         fm.add_separator()
-        fm.add_command(label="Выход", command=self.root.destroy)
-        menubar.add_cascade(label="Файл", menu=fm)
+        fm.add_command(label=tr("vyhod"), command=self.root.destroy)
+        menubar.add_cascade(label=tr("fayl"), menu=fm)
 
         vm = tk.Menu(menubar, tearoff=0)
-        vm.add_command(label="Тёмная тема (F2)",
+        vm.add_command(label=tr("temnaya_tema_f2"),
                        command=lambda: self._apply_theme("dark"))
-        vm.add_command(label="Светлая тема (F3)",
+        vm.add_command(label=tr("svetlaya_tema_f3"),
                        command=lambda: self._apply_theme("light"))
-        vm.add_command(label="Чёрная тема (F4)",
+        vm.add_command(label=tr("chernaya_tema_f4"),
                        command=lambda: self._apply_theme("black"))
-        menubar.add_cascade(label="Вид", menu=vm)
+        menubar.add_cascade(label=tr("vid"), menu=vm)
 
         lm = tk.Menu(menubar, tearoff=0)
-        lm.add_command(label="Загрузить язык...", accelerator="Ctrl+L",
+        lm.add_command(label=tr("zagruzit_yazyk"), accelerator="Ctrl+L",
                        command=self.load_custom_lang)
-        lm.add_command(label="Открыть папку плагинов", command=self.open_plugins_dir)
-        menubar.add_cascade(label="Языки", menu=lm)
+        lm.add_command(label=tr("otkryt_papku_plaginov"),
+                       command=self.open_plugins_dir)
+        menubar.add_cascade(label=tr("yazyki"), menu=lm)
 
         rm = tk.Menu(menubar, tearoff=0)
-        rm.add_command(label="Перевести", accelerator="F5", command=self.do_translate)
-        rm.add_command(label="Запустить", accelerator="F6", command=self.do_run)
-        menubar.add_cascade(label="Запуск", menu=rm)
+        rm.add_command(label=tr("perevesti"), accelerator="F5",
+                       command=self.do_translate)
+        rm.add_command(label=tr("zapustit"), accelerator="F6",
+                       command=self.do_run)
+        menubar.add_cascade(label=tr("zapusk"), menu=rm)
 
         hm = tk.Menu(menubar, tearoff=0)
-        hm.add_command(label="Справка", accelerator="F1", command=self.show_help)
-        menubar.add_cascade(label="Справка", menu=hm)
+        hm.add_command(label=tr("spravka"), accelerator="F1",
+                       command=self.show_help)
+        menubar.add_cascade(label=tr("spravka"), menu=hm)
+
         self.root.config(menu=menubar)
 
-        # ---------- ТУЛБАР ----------
+    # ---------- ТУЛБАР ----------
+    def _build_toolbar(self):
         tb = ttk.Frame(self.root, padding=(10, 8, 10, 4))
         tb.pack(fill="x")
 
-        ttk.Label(tb, text="Режим:").grid(row=0, column=0, padx=(0, 5))
-        self.mode = ttk.Combobox(tb, values=[m[0] for m in MODES],
+        ttk.Label(tb, text=tr("rezhim")).grid(row=0, column=0, padx=(0, 5))
+        self.mode = ttk.Combobox(tb, values=[m[0] for m in _modes()],
                                  state="readonly", width=10)
         self.mode.current(0)
         self.mode.grid(row=0, column=1, padx=(0, 15))
         self.mode.bind("<<ComboboxSelected>>", self.on_mode)
 
-        ttk.Label(tb, text="Из:").grid(row=0, column=2, padx=(0, 3))
+        ttk.Label(tb, text=tr("iz")).grid(row=0, column=2, padx=(0, 3))
         self.src = ttk.Combobox(tb, values=[], state="readonly", width=14)
         self.src.grid(row=0, column=3, padx=(0, 10))
         self.src.bind("<<ComboboxSelected>>", self.on_src)
 
-        ttk.Label(tb, text="В:").grid(row=0, column=4, padx=(0, 3))
+        ttk.Label(tb, text=tr("v")).grid(row=0, column=4, padx=(0, 3))
         self.dst = ttk.Combobox(tb, values=[], state="readonly", width=16)
         self.dst.grid(row=0, column=5, padx=(0, 10))
         self.dst.bind("<<ComboboxSelected>>", self.on_dst)
 
-        ttk.Label(tb, text="Тип:").grid(row=0, column=6, padx=(0, 3))
-        self.tpl_type = ttk.Combobox(tb, values=ALL_LABELS,
-                                     state="readonly", width=10)
+        ttk.Label(tb, text=tr("tip")).grid(row=0, column=6, padx=(0, 3))
+        self._tpl_type_pairs = self._tpl_type_labels()
+        self.tpl_type = ttk.Combobox(
+            tb,
+            values=[lbl for lbl, _ in self._tpl_type_pairs],
+            state="readonly", width=10,
+        )
         self.tpl_type.grid(row=0, column=7, padx=(0, 10))
         self.tpl_type.current(0)
         self.tpl_type.bind("<<ComboboxSelected>>", self.on_tpl_type)
 
-        ttk.Label(tb, text="Шаблон:").grid(row=0, column=8, padx=(0, 3))
+        ttk.Label(tb, text=tr("shablon")).grid(row=0, column=8, padx=(0, 3))
         self.tpl = ttk.Combobox(tb, values=[], state="readonly", width=32)
         self.tpl.grid(row=0, column=9, padx=(0, 10))
         self.tpl.bind("<<ComboboxSelected>>", self.on_tpl)
@@ -181,59 +196,64 @@ class App:
         bt = ttk.Frame(self.root, padding=(10, 0, 10, 6))
         bt.pack(fill="x")
 
-        def mkbtn(key, default_text, cmd):
+        def mkbtn(key, default_key, cmd):
+            default_text = tr(default_key)
             text = UI_SETTINGS["button_labels"].get(key, default_text)
-            b = ttk.Button(bt, text=text, command=cmd, style="Smooth.TButton")
+            b = ttk.Button(bt, text=text, command=cmd,
+                           style="Smooth.TButton")
             b.pack(side="left", padx=(0, 6))
             self._buttons[key] = (b, default_text)
             return b
 
-        mkbtn("translate", "Перевести  F5", self.do_translate)
-        mkbtn("run",       "Запустить  F6", self.do_run)
+        mkbtn("translate", "btn_translate", self.do_translate)
+        mkbtn("run", "btn_run", self.do_run)
         ttk.Separator(bt, orient="vertical").pack(side="left", fill="y", padx=6)
-        mkbtn("open",      "Открыть", self.do_open)
-        mkbtn("save",      "Сохранить", self.do_save)
-        mkbtn("clear",     "Очистить", self.do_clear)
+        mkbtn("open", "btn_open", self.do_open)
+        mkbtn("save", "btn_save", self.do_save)
+        mkbtn("clear", "btn_clear", self.do_clear)
         ttk.Separator(bt, orient="vertical").pack(side="left", fill="y", padx=6)
-        mkbtn("copy_src",  "Копир. ИС 1", self.copy_src)
-        mkbtn("paste_src", "Встав. ИС 1", self.paste_src)
-        mkbtn("copy_dst",  "Копир. ИС 2", self.copy_dst)
+        mkbtn("copy_src", "btn_copy_src", self.copy_src)
+        mkbtn("paste_src", "btn_paste_src", self.paste_src)
+        mkbtn("copy_dst", "btn_copy_dst", self.copy_dst)
         ttk.Separator(bt, orient="vertical").pack(side="left", fill="y", padx=6)
-        mkbtn("load_lang", "Язык из файла", self.load_custom_lang)
-        mkbtn("theme",     "Тема", self.cycle_theme)
+        mkbtn("load_lang", "btn_load_lang", self.load_custom_lang)
+        mkbtn("theme", "btn_theme", self.cycle_theme)
 
-        # ---------- ТЕРМИНАЛ СНИЗУ ----------
+    # ---------- ТЕРМИНАЛ ----------
+    def _build_terminal(self):
         self.status = ttk.Label(self.root, text="", padding=(10, 0, 10, 4))
         self.status.pack(fill="x", side="bottom")
 
-        tf = ttk.Frame(self.root)
-        tf.pack(fill="x", side="bottom")
+        term_frame = ttk.Frame(self.root)
+        term_frame.pack(fill="x", side="bottom")
 
-        head = ttk.Frame(tf, padding=(10, 2, 10, 0))
+        head = ttk.Frame(term_frame, padding=(10, 2, 10, 0))
         head.pack(fill="x")
-        ttk.Label(head, text="Терминал",
+        ttk.Label(head, text=tr("terminal"),
                   font=("Segoe UI", 9, "bold")).pack(side="left")
-        ttk.Button(head, text="Очистить", command=self.clear_term,
+        ttk.Button(head, text=tr("ochistit"), command=self.clear_term,
                    style="Smooth.TButton").pack(side="right")
-        ttk.Button(head, text="Развернуть", command=self.toggle_terminal,
+        ttk.Button(head, text=tr("razvernut"), command=self.toggle_terminal,
                    style="Smooth.TButton").pack(side="right", padx=(0, 4))
 
-        self.term = tk.Text(tf, height=6, font=("Consolas", 10),
+        self.term = tk.Text(term_frame, height=6, font=("Consolas", 10),
                             wrap="word", bd=0, padx=8, pady=6)
         self.term.pack(fill="x", padx=10, pady=(2, 8))
         self.term.config(state="disabled")
 
-        # ---------- ВКЛАДКИ ----------
+    # ---------- ВКЛАДКИ ----------
+    def _build_tabs(self):
         self.tabs = ttk.Notebook(self.root)
         self.tabs.pack(fill="both", expand=True, padx=10, pady=(0, 4))
         self._build_tab_translate()
         self._build_tab_rivulet()
+        self._build_tab_piet()
         self._build_tab_other()
         self._build_tab_examples()
         self._build_tab_about()
         self._build_tab_sandbox()
         self._build_tab_mosaic()
-        self._build_tab_piet_asm() # Piet-ASM   # === SANDBOX ===
+        self._build_tab_piet_asm()
 
     # ==========================================================
     #  ОБЩЕЕ ПОЛЕ
@@ -249,12 +269,23 @@ class App:
                   bg=t["field"], fg=t["fg"])
         return cls(parent, self, **kw) if highlight else cls(parent, **kw)
 
+    def _tpl_type_labels(self):
+        """[(локализованная метка, код типа)] — первым идёт «Все» (code=None)."""
+        return [
+            (tr("filter_all"), None),
+            (tr("tpl_type_E"), "E"),
+            (tr("tpl_type_M"), "M"),
+            (tr("tpl_type_H"), "H"),
+            (tr("tpl_type_W"), "W"),
+            (tr("tpl_type_T"), "T"),
+        ]
+
     # ==========================================================
     #  ВКЛАДКА «ПЕРЕВОД»
     # ==========================================================
     def _build_tab_translate(self):
         tab = ttk.Frame(self.tabs, padding=10)
-        self.tabs.add(tab, text="Перевод")
+        self.tabs.add(tab, text=tr("perevod"))
 
         mid = ttk.Frame(tab)
         mid.pack(fill="both", expand=True)
@@ -266,7 +297,7 @@ class App:
         left.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
         left.rowconfigure(1, weight=1)
         left.columnconfigure(0, weight=1)
-        self.src_label = ttk.Label(left, text="Язык №1:")
+        self.src_label = ttk.Label(left, text=tr("yazyk_1"))
         self.src_label.grid(row=0, column=0, sticky="w", pady=(0, 3))
         self.editor = self._make_field(left, highlight=True)
         self.editor.grid(row=1, column=0, sticky="nsew")
@@ -275,7 +306,7 @@ class App:
         right.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
         right.rowconfigure(1, weight=1)
         right.columnconfigure(0, weight=1)
-        self.dst_label = ttk.Label(right, text="Язык №2:")
+        self.dst_label = ttk.Label(right, text=tr("yazyk_2"))
         self.dst_label.grid(row=0, column=0, sticky="w", pady=(0, 3))
         self.output = self._make_field(right, highlight=True)
         self.output.grid(row=1, column=0, sticky="nsew")
@@ -284,60 +315,99 @@ class App:
         self.output.bind("<<Paste>>", lambda e: "break")
         self.output.bind("<<Cut>>", lambda e: "break")
 
+    def _load_tab_widget(self, tab_key: str, name: str, factory,
+                         pack: bool = True):
+        """Единая обёртка для загрузки вкладок.
+
+        factory может вернуть:
+          • ttk.Frame / tk.Canvas / любой widget → пакуем его самого;
+          • объект-контроллер (RivuletCanvasTab, PietCanvasTab, ...),
+            который уже сам встроился в переданный parent → ничего
+            не пакуем, только возвращаем объект;
+          • объект-контроллер с .frame / .widget / .container
+            → пакуем этот вложенный виджет.
+        """
+        tab = ttk.Frame(self.tabs, padding=10)
+        self.tabs.add(tab, text=tr(tab_key))
+
+        try:
+            widget = factory(tab)
+        except Exception as e:
+            ttk.Label(
+                tab,
+                text=tf("err_canvas_load", name=name) + f"\n{e}",
+                foreground="red", wraplength=800,
+            ).pack(pady=20, padx=20)
+            return None
+
+        if pack:
+            target = None
+
+            # 1) сам объект — виджет?
+            if hasattr(widget, "pack"):
+                target = widget
+            else:
+                # 2) у контроллера есть типовой атрибут-виджет?
+                for attr in ("frame", "widget", "container", "root_widget"):
+                    cand = getattr(widget, attr, None)
+                    if cand is not None and hasattr(cand, "pack"):
+                        target = cand
+                        break
+
+            # 3) если нашли — пакуем; иначе считаем, что контроллер
+            #    уже сам всё упаковал в parent (типичный случай для
+            #    RivuletCanvasTab / PietCanvasTab).
+            if target is not None:
+                target.pack(fill="both", expand=True)
+
+        return widget
+
     # ==========================================================
     #  ВКЛАДКА «RIVULET CANVAS»
     # ==========================================================
     def _build_tab_rivulet(self):
-        tab = ttk.Frame(self.tabs, padding=10)
-        self.tabs.add(tab, text="Rivulet Canvas")
-
         try:
             from ui.rivulet_canvas import RivuletCanvasTab
         except Exception as e:
+            tab = ttk.Frame(self.tabs, padding=10)
+            self.tabs.add(tab, text=tr("rivulet_canvas"))
             ttk.Label(tab,
-                text=f"Не удалось загрузить Rivulet Canvas:\n{e}",
-                foreground="red", wraplength=800).pack(pady=20, padx=20)
+                      text=tf("err_canvas_load",
+                              name=tr("rivulet_canvas")) + f"\n{e}",
+                      foreground="red", wraplength=800).pack(pady=20, padx=20)
             return
 
-        try:
-            self.rivulet_canvas = RivuletCanvasTab(tab, self)
-        except Exception as e:
-            ttk.Label(tab,
-                text=f"Ошибка при создании холста:\n{e}",
-                foreground="red", wraplength=800).pack(pady=20, padx=20)
+        self.rivulet_canvas = self._load_tab_widget(
+            "rivulet_canvas", tr("rivulet_canvas"),
+            lambda parent: RivuletCanvasTab(parent, self),
+        )
 
     # ==========================================================
     #  ВКЛАДКА «PIET CANVAS»
     # ==========================================================
     def _build_tab_piet(self):
-        tab = ttk.Frame(self.tabs, padding=10)
-        self.tabs.add(tab, text="Piet Canvas")
-
         try:
             from ui.piet_canvas import PietCanvasTab
         except Exception as e:
-            ttk.Label(
-                tab,
-                text=f"Не удалось загрузить Piet Canvas:\n{e}",
-                foreground="red", wraplength=800,
-            ).pack(pady=20, padx=20)
+            tab = ttk.Frame(self.tabs, padding=10)
+            self.tabs.add(tab, text=tr("piet_canvas"))
+            ttk.Label(tab,
+                      text=tf("err_canvas_load",
+                              name=tr("piet_canvas")) + f"\n{e}",
+                      foreground="red", wraplength=800).pack(pady=20, padx=20)
             return
 
-        try:
-            self.piet_canvas = PietCanvasTab(tab, self)
-        except Exception as e:
-            ttk.Label(
-                tab,
-                text=f"Ошибка при создании холста:\n{e}",
-                foreground="red", wraplength=800,
-            ).pack(pady=20, padx=20)
+        self.piet_canvas = self._load_tab_widget(
+            "piet_canvas", tr("piet_canvas"),
+            lambda parent: PietCanvasTab(parent, self),
+        )
 
     # ==========================================================
     #  ВКЛАДКА «ДРУГОЕ»
     # ==========================================================
     def _build_tab_other(self):
         outer = ttk.Frame(self.tabs, padding=(8, 8, 8, 8))
-        self.tabs.add(outer, text="Другое")
+        self.tabs.add(outer, text=tr("drugoe"))
 
         sub = ttk.Notebook(outer)
         sub.pack(fill="both", expand=True)
@@ -357,7 +427,7 @@ class App:
     # ---------- ПОД-ВКЛАДКА «ТЕМЫ» ----------
     def _build_theme_tab(self, parent):
         tab = ttk.Frame(parent, padding=10)
-        parent.add(tab, text="🎨 Темы")
+        parent.add(tab, text=tr("temy_palette"))
 
         body = ttk.Frame(tab)
         body.pack(fill="both", expand=True)
@@ -366,7 +436,7 @@ class App:
 
         left = ttk.Frame(body)
         left.grid(row=0, column=0, sticky="ns", padx=(0, 12))
-        ttk.Label(left, text="Встроенные темы",
+        ttk.Label(left, text=tr("vstroennye_temy"),
                   font=("Segoe UI", 10, "bold")).pack(anchor="w")
         lf = ttk.Frame(left)
         lf.pack(fill="both", expand=True, pady=(4, 0))
@@ -384,7 +454,7 @@ class App:
 
         right = ttk.Frame(body)
         right.grid(row=0, column=1, sticky="nsew")
-        ttk.Label(right, text="Превью",
+        ttk.Label(right, text=tr("prevyu"),
                   font=("Segoe UI", 10, "bold")).pack(anchor="w")
         pv = ttk.Frame(right, relief="solid", borderwidth=1)
         pv.pack(fill="both", expand=True, pady=(4, 8))
@@ -393,25 +463,25 @@ class App:
                                       state="disabled")
         self.theme_preview.pack(fill="both", expand=True)
 
-        actions = ttk.LabelFrame(right, text="Действия", padding=8)
+        actions = ttk.LabelFrame(right, text=tr("deystviya"), padding=8)
         actions.pack(fill="x")
-        ttk.Button(actions, text="Применить тему",
+        ttk.Button(actions, text=tr("primenit_temu"),
                    command=self._apply_selected_theme,
                    style="Smooth.TButton").pack(fill="x")
 
     # ---------- ПОД-ВКЛАДКА «ШАБЛОНЫ» ----------
     def _build_templates_tab(self, parent):
         tab = ttk.Frame(parent, padding=10)
-        parent.add(tab, text="📝 Шаблоны")
+        parent.add(tab, text=tr("shablony_list"))
 
         top = ttk.Frame(tab)
         top.pack(fill="x", pady=(0, 8))
-        ttk.Label(top, text="Язык:").pack(side="left", padx=(0, 6))
+        ttk.Label(top, text=tr("yazyk")).pack(side="left", padx=(0, 6))
         self.cfg_lang = ttk.Combobox(top, values=[], state="readonly", width=24)
         self.cfg_lang.pack(side="left", padx=(0, 10))
         self.cfg_lang.bind("<<ComboboxSelected>>",
                             lambda e: self._refresh_template_list())
-        ttk.Button(top, text="Сбросить к встроенным",
+        ttk.Button(top, text=tr("sbrosit_k_vstroennym"),
                    command=self._reset_templates_for_lang,
                    style="Smooth.TButton").pack(side="right")
 
@@ -422,7 +492,7 @@ class App:
 
         left = ttk.Frame(body)
         left.grid(row=0, column=0, sticky="ns", padx=(0, 12))
-        ttk.Label(left, text="Шаблоны",
+        ttk.Label(left, text=tr("shablony"),
                   font=("Segoe UI", 10, "bold")).pack(anchor="w")
         lf = ttk.Frame(left)
         lf.pack(fill="both", expand=True, pady=(4, 4))
@@ -436,29 +506,31 @@ class App:
         self.tpl_list.config(yscrollcommand=sb.set)
         self.tpl_list.bind("<<ListboxSelect>>", self._on_template_select)
 
-        tb = ttk.Frame(left); tb.pack(fill="x")
-        ttk.Button(tb, text="+ Добавить",
+        tb = ttk.Frame(left)
+        tb.pack(fill="x")
+        ttk.Button(tb, text=tr("dobavit"),
                    command=self._add_new_template,
                    style="Smooth.TButton").pack(side="left", fill="x",
                                                  expand=True, padx=(0, 2))
-        ttk.Button(tb, text="− Удалить",
+        ttk.Button(tb, text=tr("udalit"),
                    command=self._delete_selected_template,
                    style="Smooth.TButton").pack(side="left", fill="x",
                                                  expand=True, padx=(2, 0))
 
-        tb2 = ttk.Frame(left); tb2.pack(fill="x", pady=(4, 0))
-        ttk.Button(tb2, text="Переименовать…",
+        tb2 = ttk.Frame(left)
+        tb2.pack(fill="x", pady=(4, 0))
+        ttk.Button(tb2, text=tr("pereimenovat"),
                    command=self._rename_selected_template,
                    style="Smooth.TButton").pack(fill="x")
 
         right = ttk.Frame(body)
         right.grid(row=0, column=1, sticky="nsew")
-        ttk.Label(right, text="Название:",
+        ttk.Label(right, text=tr("nazvanie"),
                   font=("Segoe UI", 10, "bold")).pack(anchor="w")
         self.tpl_name_var = tk.StringVar()
         ttk.Entry(right, textvariable=self.tpl_name_var,
                   font=("Consolas", 11)).pack(fill="x", pady=(4, 8))
-        ttk.Label(right, text="Код:",
+        ttk.Label(right, text=tr("kod"),
                   font=("Segoe UI", 10, "bold")).pack(anchor="w")
         txt_frame = ttk.Frame(right)
         txt_frame.pack(fill="both", expand=True, pady=(4, 8))
@@ -470,12 +542,13 @@ class App:
         sb2.pack(side="right", fill="y")
         self.cfg_txt.config(yscrollcommand=sb2.set)
 
-        btns = ttk.Frame(right); btns.pack(fill="x")
-        ttk.Button(btns, text="💾 Сохранить",
+        btns = ttk.Frame(right)
+        btns.pack(fill="x")
+        ttk.Button(btns, text=tr("sohranit_disk"),
                    command=self._save_template_edit,
                    style="Smooth.TButton").pack(side="left", fill="x",
                                                  expand=True, padx=(0, 3))
-        ttk.Button(btns, text="Отменить",
+        ttk.Button(btns, text=tr("otmenit"),
                    command=self._on_template_select,
                    style="Smooth.TButton").pack(side="left", fill="x",
                                                  expand=True, padx=(3, 0))
@@ -483,14 +556,10 @@ class App:
     # ---------- ПОД-ВКЛАДКА «ЯЗЫКИ» ----------
     def _build_languages_tab(self, parent):
         tab = ttk.Frame(parent, padding=10)
-        parent.add(tab, text="🧩 Языки")
+        parent.add(tab, text=tr("yazyki_puzzle"))
 
-        ttk.Label(tab,
-            text="Системные языки (Python, JavaScript, C++, Brainfuck, "
-                 "Whitespace, Rivulet) удалить нельзя.\n"
-                 "Остальные при отключении сохраняются в папку "
-                 "langs_disabled/ и могут быть восстановлены.",
-            justify="left").pack(anchor="w", pady=(0, 8))
+        ttk.Label(tab, text=tr("langs_hint"),
+                  justify="left").pack(anchor="w", pady=(0, 8))
 
         body = ttk.Frame(tab)
         body.pack(fill="both", expand=True)
@@ -498,9 +567,10 @@ class App:
         body.columnconfigure(1, weight=1)
         body.rowconfigure(0, weight=1)
 
-        left = ttk.LabelFrame(body, text="Активные", padding=8)
+        left = ttk.LabelFrame(body, text=tr("aktivnye"), padding=8)
         left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        lf1 = ttk.Frame(left); lf1.pack(fill="both", expand=True)
+        lf1 = ttk.Frame(left)
+        lf1.pack(fill="both", expand=True)
         self.lang_list = tk.Listbox(lf1, font=("Segoe UI", 10),
                                      activestyle="none",
                                      exportselection=False)
@@ -509,10 +579,11 @@ class App:
         sb1.pack(side="left", fill="y")
         self.lang_list.config(yscrollcommand=sb1.set)
 
-        right = ttk.LabelFrame(body, text="Отключённые (langs_disabled/)",
+        right = ttk.LabelFrame(body, text=tr("otklyuchennye_langs_disabled"),
                                 padding=8)
         right.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        lf2 = ttk.Frame(right); lf2.pack(fill="both", expand=True)
+        lf2 = ttk.Frame(right)
+        lf2.pack(fill="both", expand=True)
         self.disabled_list = tk.Listbox(lf2, font=("Segoe UI", 10),
                                          activestyle="none",
                                          exportselection=False)
@@ -524,31 +595,30 @@ class App:
 
         btns = ttk.Frame(tab)
         btns.pack(fill="x", pady=(8, 0))
-        ttk.Button(btns, text="Переименовать язык…",
+        ttk.Button(btns, text=tr("pereimenovat_yazyk"),
                    command=self._rename_language,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(btns, text="Отключить →",
+        ttk.Button(btns, text=tr("otklyuchit"),
                    command=self._disable_selected_lang,
                    style="Smooth.TButton").pack(side="left", padx=4)
-        ttk.Button(btns, text="← Восстановить",
+        ttk.Button(btns, text=tr("vosstanovit_arrow"),
                    command=self._enable_selected_lang,
                    style="Smooth.TButton").pack(side="left", padx=4)
-        ttk.Separator(btns, orient="vertical").pack(side="left", fill="y",
-                                                      padx=8)
-        ttk.Button(btns, text="Загрузить плагин…",
+        ttk.Separator(btns, orient="vertical").pack(side="left", fill="y", padx=8)
+        ttk.Button(btns, text=tr("zagruzit_plagin"),
                    command=self.load_custom_lang,
                    style="Smooth.TButton").pack(side="left", padx=4)
-        ttk.Button(btns, text="Открыть папки",
+        ttk.Button(btns, text=tr("otkryt_papki"),
                    command=self.open_plugins_dir,
                    style="Smooth.TButton").pack(side="left", padx=4)
 
     # ---------- ПОД-ВКЛАДКА «ИНТЕРФЕЙС» ----------
     def _build_ui_tab(self, parent):
         tab = ttk.Frame(parent, padding=10)
-        parent.add(tab, text="⚙️ Интерфейс")
+        parent.add(tab, text=tr("interfeys_gear"))
 
         # --- Подписи кнопок ---
-        btn_frame = ttk.LabelFrame(tab, text="Подписи кнопок", padding=8)
+        btn_frame = ttk.LabelFrame(tab, text=tr("podpisi_knopok"), padding=8)
         btn_frame.pack(fill="x", pady=(0, 10))
 
         self.btn_list = tk.Listbox(btn_frame, height=8,
@@ -564,26 +634,44 @@ class App:
 
         ctrl = ttk.Frame(btn_frame)
         ctrl.pack(side="left", padx=(10, 0))
-        ttk.Label(ctrl, text="Новый текст:").pack(anchor="w")
+        ttk.Label(ctrl, text=tr("novyy_tekst")).pack(anchor="w")
         self.btn_text_var = tk.StringVar()
-        ttk.Entry(ctrl, textvariable=self.btn_text_var,
-                  width=28).pack(pady=4)
-        ttk.Button(ctrl, text="Применить",
+        ttk.Entry(ctrl, textvariable=self.btn_text_var, width=28).pack(pady=4)
+        ttk.Button(ctrl, text=tr("primenit"),
                    command=self._apply_btn_rename,
                    style="Smooth.TButton").pack(fill="x", pady=2)
-        ttk.Button(ctrl, text="Сбросить всё",
+        ttk.Button(ctrl, text=tr("sbrosit_vse"),
                    command=self._reset_button_labels,
                    style="Smooth.TButton").pack(fill="x", pady=2)
 
+        # --- Язык / Language ---
+        lang_frame = ttk.LabelFrame(tab, text=tr("lang_section"), padding=8)
+        lang_frame.pack(fill="x", pady=(0, 10))
+
+        self.lang_var = tk.StringVar(value=get_lang())
+        for _code in available_langs():
+            ttk.Radiobutton(
+                lang_frame,
+                text=_code.upper(),
+                variable=self.lang_var,
+                value=_code,
+                command=self._change_language,
+            ).pack(side="left", padx=4)
+
+        ttk.Label(
+            lang_frame,
+            text=tr("restart_hint"),
+            font=("Segoe UI", 8),
+        ).pack(side="left", padx=(12, 0))
+
         # --- Цвета списков для темы ---
-        lb_frame = ttk.LabelFrame(tab,
-                                   text="Цвета списков (для темы)",
+        lb_frame = ttk.LabelFrame(tab, text=tr("cveta_spiskov_dlya"),
                                    padding=8)
         lb_frame.pack(fill="x", pady=(0, 10))
 
         top = ttk.Frame(lb_frame)
         top.pack(fill="x")
-        ttk.Label(top, text="Тема:").pack(side="left", padx=(0, 6))
+        ttk.Label(top, text=tr("tema")).pack(side="left", padx=(0, 6))
         self.lb_theme_var = tk.StringVar(value="dark")
         self.lb_theme_cb = ttk.Combobox(top,
                                          textvariable=self.lb_theme_var,
@@ -596,13 +684,15 @@ class App:
         colors_frame = ttk.Frame(lb_frame)
         colors_frame.pack(fill="x", pady=6)
         self.lb_colors = {}
-        for key, label in (("bg", "Фон"),
-                            ("fg", "Текст"),
-                            ("select_bg", "Выделение (фон)"),
-                            ("select_fg", "Выделение (текст)")):
+        for key, label_key in (
+                ("bg", "lb_color_bg"),
+                ("fg", "lb_color_fg"),
+                ("select_bg", "lb_color_select_bg"),
+                ("select_fg", "lb_color_select_fg"),
+        ):
             col = ttk.Frame(colors_frame)
             col.pack(side="left", padx=4)
-            ttk.Label(col, text=label,
+            ttk.Label(col, text=tr(label_key),
                       font=("Segoe UI", 9)).pack()
             b = ttk.Button(col, text="#------", width=12)
             b.pack()
@@ -614,8 +704,10 @@ class App:
                     current = (UI_SETTINGS["listbox_theme"]
                                .get(theme_name, {})
                                .get(k, "#ffffff"))
-                    new = colorchooser.askcolor(color=current,
-                                                 title=f"Цвет: {k}")[1]
+                    new = colorchooser.askcolor(
+                        color=current,
+                        title=tf("dlg_color_pick", key=k),
+                    )[1]
                     if new:
                         (UI_SETTINGS["listbox_theme"]
                          .setdefault(theme_name, {}))[k] = new
@@ -627,7 +719,7 @@ class App:
 
         reset_row = ttk.Frame(lb_frame)
         reset_row.pack(fill="x", pady=4)
-        ttk.Button(reset_row, text="Сбросить цвета для этой темы",
+        ttk.Button(reset_row, text=tr("sbrosit_cveta_dlya"),
                    command=self._reset_listbox_colors,
                    style="Smooth.TButton").pack(side="left")
 
@@ -636,7 +728,7 @@ class App:
     # ==========================================================
     def _build_tab_examples(self):
         tab = ttk.Frame(self.tabs, padding=10)
-        self.tabs.add(tab, text="Примеры (TXT)")
+        self.tabs.add(tab, text=tr("primery_txt"))
 
         self.ex_txt = self._make_field(tab, highlight=False)
         self.ex_txt.pack(fill="both", expand=True, pady=(4, 8))
@@ -644,13 +736,13 @@ class App:
 
         btns = ttk.Frame(tab)
         btns.pack(fill="x")
-        ttk.Button(btns, text="Сохранить в TXT",
+        ttk.Button(btns, text=tr("sohranit_v_txt"),
                    command=self._export_examples,
                    style="Smooth.TButton").pack(side="left", padx=(0, 5))
-        ttk.Button(btns, text="Загрузить из TXT",
+        ttk.Button(btns, text=tr("zagruzit_iz_txt"),
                    command=self._import_examples,
                    style="Smooth.TButton").pack(side="left", padx=(0, 5))
-        ttk.Button(btns, text="Обновить",
+        ttk.Button(btns, text=tr("obnovit"),
                    command=self._fill_examples,
                    style="Smooth.TButton").pack(side="left")
 
@@ -659,12 +751,12 @@ class App:
     # ==========================================================
     def _build_tab_about(self):
         tab = ttk.Frame(self.tabs, padding=0)
-        self.tabs.add(tab, text="О программе")  # ← было "Справка"
+        self.tabs.add(tab, text=tr("o_programme"))
 
         wrapper = ttk.Frame(tab)
         wrapper.pack(fill="both", expand=True)
 
-        self.about_txt = tk.Text(  # ← было help_txt
+        self.about_txt = tk.Text(
             wrapper,
             wrap="word",
             font=("Consolas", 10),
@@ -679,15 +771,14 @@ class App:
         self.about_txt.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
 
-        # --- Заголовки ---
+        # Заголовки
         self.about_txt.tag_configure("h1", font=("Segoe UI", 18, "bold"))
         self.about_txt.tag_configure("h2", font=("Segoe UI", 12, "bold"))
         self.about_txt.tag_configure("h3", font=("Segoe UI", 10, "bold"))
         self.about_txt.tag_configure("mono", font=("Consolas", 10))
         self.about_txt.tag_configure("accent", font=("Consolas", 10, "bold"))
 
-        # --- Семантические теги (цвета задаст _apply_theme,
-        #     здесь — только шрифты) ---
+        # Семантические теги (цвета задаст _apply_theme)
         self.about_txt.tag_configure("key",   font=("Segoe UI", 10, "bold"))
         self.about_txt.tag_configure("num",   font=("Consolas", 10, "bold"))
         self.about_txt.tag_configure("os",    font=("Consolas", 10, "bold"))
@@ -699,30 +790,24 @@ class App:
         self.about_txt.tag_configure("bad",   font=("Consolas", 10, "bold"))
         self.about_txt.tag_configure("warn",  font=("Consolas", 10, "bold"))
         self.about_txt.tag_configure("dim",   font=("Consolas", 9))
-        self._fill_about()  # ← было _fill_help
+        self._fill_about()
         self.about_txt.config(state="disabled")
-    # ----------------------------------------------------------
 
     def _insert_line(self, base_tag: str, text: str) -> None:
-        """Вставляет одну строку. Поддерживает маркеры {tag|текст}.
-        base_tag — тег для всего текста вне маркеров ('' — без тега).
-        """
+        """Вставляет одну строку. Поддерживает маркеры {tag|текст}."""
         t = self.about_txt
         pattern = re.compile(r"\{(\w+)\|([^}]*)\}")
         pos = 0
         for m in pattern.finditer(text):
-            # обычный текст до маркера
             if m.start() > pos:
                 chunk = text[pos:m.start()]
                 if base_tag:
                     t.insert("end", chunk, base_tag)
                 else:
                     t.insert("end", chunk)
-            # маркер → цветной кусок
             tag, content = m.group(1), m.group(2)
             t.insert("end", content, tag)
             pos = m.end()
-        # хвост строки
         if pos < len(text):
             chunk = text[pos:]
             if base_tag:
@@ -732,6 +817,7 @@ class App:
         t.insert("end", "\n")
 
     def _fill_about(self):
+        """Строит текст About из locales/about.json с fallback на встроенный."""
         t = self.about_txt
         t.config(state="normal")
         t.delete("1.0", "end")
@@ -747,6 +833,7 @@ class App:
             os_name = f"{platform.system()} {platform.release()}"
         except Exception:
             os_name = "?"
+
         py_ver = sys.version.split()[0]
 
         def has(mod):
@@ -760,195 +847,41 @@ class App:
         cairo = has("cairosvg")
         svttk = has("sv_ttk")
 
-        sections = [
-            ("h1", "Esolang Translator"),
-            ("mono", "Версия {ver|2.5}  ·  сборка {ver|2026}  ·  MIT License"),
-            ("mono", "© 2026  Esolang Translator"),
-            ("", ""),
+        # Загрузка контента
+        sections = None
+        try:
+            base = Path(getattr(sys, "_MEIPASS", Path(__file__).parent.parent))
+            about_path = base / "locales" / "about.json"
+            if about_path.exists():
+                data = json.loads(about_path.read_text(encoding="utf-8"))
+                sections = (data.get(get_lang())
+                            or data.get("en")
+                            or data.get("ru"))
+        except Exception as e:
+            print(f"[about] load: {e}")
 
-            ("h2", "О программе"),
-            ("", "Esolang Translator — многоязычная среда разработки для "
-                 "эзотерических и обычных языков программирования."),
-            ("", "Программа позволяет писать код на одном языке, переводить "
-                 "его в другой ({key|F5}), запускать прямо в окне "
-                 "({key|F6}) и визуализировать 2D-языки "
-                 "({key|Rivulet}, {key|Piet}) на встроенных холстах."),
-            ("", "Поддерживается {num|1560} направлений перевода между всеми "
-                 "языками: «обычный → эзотерический», «эзотерический → "
-                 "обычный» и «эзотерический → эзотерический»."),
-            ("", ""),
+        if not sections:
+            sections = [
+                ("h1", tr("esolang_translator")),
+                ("mono", "© 2026"),
+            ]
 
-            ("h2", "Ключевые возможности"),
-            ("", "• {num|1560} направлений перевода между всеми языками."),
-            ("", "• Подсветка синтаксиса для каждого языка."),
-            ("", "• {num|38} встроенных тем: 3 базовые, 5 классических, "
-                 "радуга, оттенки голубого / красного / фиолетового, "
-                 "10 светлых пастельных."),
-            ("", "• 2D-редакторы {key|Rivulet} и {key|Piet} с превью."),
-            ("", "• Вкладка «{key|Мозаика}» — плиточная визуализация."),
-            ("", "• Вкладка «{key|Песочница}» — изолированный запуск кода."),
-            ("", "• {key|Piet-ASM} — ассемблер Piet с плитками {num|16×16}."),
-            ("", "• Плагины {ext|.py} в папке {path|plugins/} без перезапуска."),
-            ("", "• Переименование языков, кнопок и языков-плагинов."),
-            ("", "• Пользовательские темы с настройкой цветов списков."),
-            ("", "• Отключение ненужных языков в {path|langs_disabled/}."),
-            ("", ""),
-
-            ("h2", "Системные требования"),
-            ("h3", "Операционная система"),
-            ("mono", "  {os|Windows 10 / 11}         → Python {pyver|3.10} – {pyver|3.14}"),
-            ("mono", "  {os|Linux}  (любой с Tk)      → Python {pyver|3.10} – {pyver|3.14}"),
-            ("mono", "  {os|macOS}  10.13+           → Python {pyver|3.10} – {pyver|3.14}"),
-            ("", ""),
-            ("h3", "Python"),
-            ("warn", "  Требуется:   Python {pyver|3.10} или новее"),
-            ("dim",  "  Причина:     pattern matching (match / case)"),
-            ("dim",  "               и type hints нового синтаксиса"),
-            ("mono", "  Проверено:   Python {pyver|3.10} – {pyver|3.14}"),
-            ("", ""),
-            ("h3", "Обязательные библиотеки"),
-            ("mono", "  {key|tkinter}       — входит в стандартный Python"),
-            ("mono", "  {key|sv-ttk}        — нативные темы dark / light"),
-            ("cmd",  "                  pip install sv-ttk"),
-            ("", ""),
-            ("h3", "Опциональные библиотеки"),
-            ("mono", "  {key|Pillow}        — превью PNG, плитки Piet-ASM"),
-            ("cmd",  "                  pip install Pillow"),
-            ("mono", "  {key|cairosvg}      — превью SVG-схем Rivulet"),
-            ("cmd",  "                  pip install cairosvg"),
-            ("", ""),
-            ("h3", "Обнаружено в этой системе"),
-            ("mono", f"  ОС:            {os_name}"),
-            ("mono", f"  Python:        {py_ver}"),
-            ("", ""),
-
-            ("h2", "Горячие клавиши"),
-            ("", "  {key|F1}        — эта вкладка («О программе»)"),
-            ("", "  {key|F2}        — тёмная тема"),
-            ("", "  {key|F3}        — светлая тема"),
-            ("", "  {key|F4}        — чёрная тема"),
-            ("", "  {key|F5}        — Перевести (Из: → В:)"),
-            ("", "  {key|F6}        — Запустить текущий код"),
-            ("", "  {key|Ctrl+O}    — открыть файл"),
-            ("", "  {key|Ctrl+S}    — сохранить результат"),
-            ("", "  {key|Ctrl+L}    — загрузить язык из .py-файла"),
-            ("", "  {key|Ctrl+`}    — развернуть / свернуть терминал"),
-            ("", ""),
-
-            ("h2", "Вкладки"),
-            ("h3", "Перевод"),
-            ("", "Основная вкладка. Слева ИС 1 (исходник), справа ИС 2 "
-                 "(результат). Выбор режима, языка-источника и языка-"
-                 "приёмника, фильтра шаблонов и самого шаблона."),
-            ("h3", "Rivulet Canvas"),
-            ("", "Визуальный редактор 2D-языка {key|Rivulet}. Сетка "
-                 "глифов, палитра команд, экспорт в {ext|.riv}-файл."),
-            ("h3", "Piet-ASM"),
-            ("", "Текстовый ассемблер Piet: {key|push}, {key|add}, "
-                 "{key|sub}, {key|mul}, {key|div}, {key|mod}, "
-                 "{key|not}, {key|gt}, {key|dp}, {key|cc}, {key|dup}, "
-                 "{key|roll}, {key|write}, {key|read}, {key|out_num}, "
-                 "{key|out_char}, {key|nop}."),
-            ("", "Кнопки «▶ Запустить», «🔍 Разобрать», «📦 Плитки»."),
-            ("", "Плитки {num|16×16} рендерятся через Pillow."),
-            ("h3", "Мозаика"),
-            ("", "Плиточное представление кода (экспериментально)."),
-            ("h3", "Песочница"),
-            ("", "Изолированный запуск кода с таймаутом {num|5} сек. "
-                 "Язык и шаблон выбираются независимо от вкладки "
-                 "«Перевод». Есть вкладки «Вывод» и «Разбор»."),
-            ("h3", "Примеры (TXT)"),
-            ("", "Все шаблоны всех языков одним текстом. "
-                 "Экспорт и импорт в {ext|.txt}-файл."),
-            ("h3", "Другое"),
-            ("", "4 под-вкладки: Темы · Шаблоны · Языки · Интерфейс."),
-            ("", ""),
-
-            ("h2", f"Языки ({total})"),
-            ("h3", f"Обычные ({len(ordinary)})"),
-            ("mono", "  " + ", ".join(ordinary)),
-            ("", ""),
-            ("h3", f"Эзотерические ({len(esoteric)})"),
-            ("mono", "  " + ", ".join(esoteric)),
-            ("", ""),
-
-            ("h2", "Режимы перевода"),
-            ("mono", "{key|О = О}   обычный       → обычный"),
-            ("mono", "{key|О = Э}   обычный       → эзотерический"),
-            ("mono", "{key|Э = О}   эзотерический → обычный"),
-            ("mono", "{key|Э = Э}   эзотерический → эзотерический"),
-            ("", "«Из:» и «В:» — всегда разные языки."),
-            ("", ""),
-
-            ("h2", "Как работает перевод"),
-            ("h3", "Обычный → Обычный"),
-            ("", "Цепочка {key|X} → {key|Python} → {key|Y} через "
-                 "выполнение и генерацию."),
-            ("h3", "Обычный → Эзотерический"),
-            ("", "Выполнение исходного кода, получение вывода, генерация "
-                 "эквивалента на целевом языке."),
-            ("h3", "Эзотерический → Обычный"),
-            ("", "Линейный транспайлер по правилам конкретного языка."),
-            ("h3", "Rivulet / Piet"),
-            ("", "2D-холсты + линейный транспайлер."),
-            ("", ""),
-
-            ("h2", "Piet — 20 цветов"),
-            ("mono", "Light:  0 1 2 3 4 5   (red yellow green cyan blue magenta)"),
-            ("mono", "Normal: 6 7 8 9 a b   (red yellow green cyan blue magenta)"),
-            ("mono", "Dark:   c d e f g h   (red yellow green cyan blue magenta)"),
-            ("mono", "i — white (пустое),  j — black (стена)"),
-            ("", ""),
-
-            ("h2", "Шаблоны"),
-            ("", "У каждого языка ровно {num|13} шаблонов: [1]–[11] + 2 Test."),
-            ("", "У Rivulet {num|12} — настоящие {ext|.riv}-файлы."),
-            ("", "Переклассификация: [1]→[E1], [Test]→[T1] и т. п."),
-            ("", "Шаблоны можно редактировать в под-вкладке "
-                 "«Другое → 📝 Шаблоны»."),
-            ("", ""),
-
-            ("h2", "Плагины"),
-            ("", "Создайте {ext|.py}-файл в {path|plugins/} со структурой:"),
-            ("mono", ""),
-            ("mono", "    {key|NAME} = \"mylang\""),
-            ("mono", "    {key|CATEGORY} = \"О\"  # или \"Э\""),
-            ("mono", "    {key|TEMPLATES} = {"),
-            ("mono", "        \"[1] Пример\": \"код...\","),
-            ("mono", "        \"[2] Привет\":  \"код...\","),
-            ("mono", "    }"),
-            ("mono", "    {key|def execute}(src):"),
-            ("mono", "        return \"вывод\""),
-            ("mono", ""),
-            ("", "Затем: меню «Языки → Загрузить язык…» или {key|Ctrl+L}."),
-            ("dim", "Плагин появится в списке без перезапуска приложения."),
-            ("", ""),
-
-            ("h2", "Файлы проекта"),
-            ("path", "  config.json          — настройки и темы"),
-            ("path", "  rivulet_library.json — кэш Rivulet-программ"),
-            ("path", "  plugins/             — пользовательские плагины"),
-            ("path", "  langs_disabled/      — отключённые языки"),
-            ("path", "  Rivulet_examples/    — .riv-файлы"),
-            ("path", "  core/                — ядро"),
-            ("path", "  langs/               — языки"),
-            ("path", "  ui/                  — интерфейс"),
-            ("path", "  tools/               — скрипты и Executor"),
-            ("path", "  services/            — сервисный слой"),
-            ("path", "  rivulet/             — интерпретатор Rivulet"),
-            ("", ""),
-
-            ("h2", "Лицензия"),
-            ("", "MIT License — свободное использование, изменение и"),
-            ("", "распространение с сохранением копирайта."),
-            ("", ""),
-            ("mono", "© 2026  Esolang Translator"),
-        ]
+        def sub(text: str) -> str:
+            text = text.replace("<os_name>", os_name)
+            text = text.replace("<py_ver>",  py_ver)
+            text = text.replace("<pil>",     pil)
+            text = text.replace("<cairo>",   cairo)
+            text = text.replace("<svttk>",   svttk)
+            text = text.replace("<total>",          str(total))
+            text = text.replace("<ordinary_count>", str(len(ordinary)))
+            text = text.replace("<esoteric_count>", str(len(esoteric)))
+            text = text.replace("<ordinary_list>",  ", ".join(ordinary))
+            text = text.replace("<esoteric_list>",  ", ".join(esoteric))
+            return text
 
         for tag, text in sections:
-            self._insert_line(tag, text)
+            self._insert_line(tag, sub(text))
 
-        # Цветные галочки «Обнаружено в этой системе»
         t.insert("end", "  Pillow (PIL):  ")
         t.insert("end", pil + "\n", "ok" if pil == "✔" else "bad")
         t.insert("end", "  cairosvg:      ")
@@ -958,6 +891,76 @@ class App:
 
         t.config(state="disabled")
 
+    # ==========================================================
+    #  ЯЗЫК ИНТЕРФЕЙСА
+    # ==========================================================
+    def _change_language(self):
+        code = self.lang_var.get()
+        UI_SETTINGS["language"] = code
+        save_config()
+        set_lang(code)
+        self._retranslate_ui()
+
+    def _retranslate_ui(self):
+        """Пересоздаёт интерфейс с новым языком, сохраняя состояние."""
+        try:
+            state = {
+                "editor": self.editor.get("1.0", "end-1c"),
+                "output": self.output.get("1.0", "end-1c"),
+                "src": self.src.get(),
+                "dst": self.dst.get(),
+                "mode_idx": self.mode.current(),
+                "theme": self.theme,
+            }
+        except Exception:
+            state = {}
+
+        for w in list(self.root.winfo_children()):
+            if isinstance(w, tk.Menu):
+                continue
+            w.destroy()
+
+        self._buttons = {}
+        self.rivulet_canvas = None
+        self.piet_canvas = None
+        self._sandbox_panels = []
+
+        self._build()
+        self._apply_theme(state.get("theme", "dark"))
+        self._bind_hotkeys()
+
+        if state.get("editor"):
+            self.editor.insert("1.0", state["editor"])
+            if isinstance(self.editor, HighlightedText):
+                self.editor.highlight()
+        if state.get("output"):
+            self.output.config(state="normal")
+            self.output.insert("1.0", state["output"])
+            self.output.config(state="disabled")
+        if state.get("src"):
+            try:
+                self.src.set(state["src"])
+                self.on_src()
+            except Exception:
+                pass
+        if state.get("dst"):
+            try:
+                self.dst.set(state["dst"])
+                self.on_dst()
+            except Exception:
+                pass
+        if state.get("mode_idx") is not None:
+            try:
+                self.mode.current(state["mode_idx"])
+                self.on_mode()
+            except Exception:
+                pass
+
+        self.log("$ " + tf("msg_lang_switched", code=get_lang()))
+
+    # ==========================================================
+    #  ТЕМЫ
+    # ==========================================================
     def _refresh_theme_list(self):
         if not hasattr(self, "theme_list"):
             return
@@ -992,23 +995,23 @@ class App:
             self.theme_preview.tag_configure(tag, foreground=color)
 
         self.theme_preview.insert("end", "def hello(name):\n")
-        self.theme_preview.insert("end", "    # комментарий\n")
-        self.theme_preview.insert("end", "    print(f'Привет, {name}!')\n")
+        self.theme_preview.insert("end", "    # comment\n")
+        self.theme_preview.insert("end", "    print(f'Hello, {name}!')\n")
         self.theme_preview.insert("end", "    return 42\n")
 
         txt = self.theme_preview.get("1.0", "end-1c")
         for m in re.finditer(r"#.*", txt):
             self.theme_preview.tag_add("comment",
-                f"1.0+{m.start()}c", f"1.0+{m.end()}c")
+                                       f"1.0+{m.start()}c", f"1.0+{m.end()}c")
         for m in re.finditer(r"\b(def|return|print)\b", txt):
             self.theme_preview.tag_add("keyword",
-                f"1.0+{m.start()}c", f"1.0+{m.end()}c")
+                                       f"1.0+{m.start()}c", f"1.0+{m.end()}c")
         for m in re.finditer(r"'[^']*'", txt):
             self.theme_preview.tag_add("string",
-                f"1.0+{m.start()}c", f"1.0+{m.end()}c")
+                                       f"1.0+{m.start()}c", f"1.0+{m.end()}c")
         for m in re.finditer(r"\b\d+\b", txt):
             self.theme_preview.tag_add("number",
-                f"1.0+{m.start()}c", f"1.0+{m.end()}c")
+                                       f"1.0+{m.start()}c", f"1.0+{m.end()}c")
         self.theme_preview.config(state="disabled")
 
     def _apply_selected_theme(self):
@@ -1017,93 +1020,8 @@ class App:
             return
         self._apply_theme(list(THEMES.keys())[sel[0]])
 
-        def _style_ttk(self, t):
-            """Применяет цвета темы ко всем ttk-виджетам через ttk.Style()."""
-            s = ttk.Style()
-            bg = t.get("bg", "#1e1e1e")
-            fg = t.get("fg", "#d4d4d4")
-            field = t.get("field", bg)
-            select = t.get("select", "#264f78")
-            border = t.get("border", "#3c3c3c")
-            accent = t.get("accent", "#4ea1ff")
-
-            # --- контейнеры ---
-            for cls in ("TFrame", "TLabelframe", "TNotebook",
-                        "TPanedwindow", "TLabelframe.Label"):
-                s.configure(cls, background=bg, bordercolor=border,
-                            lightcolor=bg, darkcolor=bg)
-            s.configure("TLabelframe.Label", foreground=fg)
-
-            # --- текст и переключатели ---
-            for cls in ("TLabel", "TCheckbutton", "TRadiobutton"):
-                s.configure(cls, background=bg, foreground=fg)
-                s.map(cls,
-                      background=[("active", bg)],
-                      foreground=[("disabled", border)])
-
-            # --- кнопки (включая Smooth.TButton) ---
-            for cls in ("TButton", "Smooth.TButton", "Toolbutton"):
-                s.configure(cls,
-                            background=field, foreground=fg,
-                            bordercolor=border,
-                            focuscolor=accent,
-                            lightcolor=field, darkcolor=field,
-                            relief="flat", borderwidth=0)
-                s.map(cls,
-                      background=[("active", select), ("pressed", select),
-                                  ("disabled", bg)],
-                      foreground=[("disabled", border)])
-
-            # --- поля ввода ---
-            s.configure("TEntry",
-                        fieldbackground=field, foreground=fg,
-                        bordercolor=border,
-                        lightcolor=border, darkcolor=border)
-            s.map("TEntry",
-                  fieldbackground=[("readonly", bg)],
-                  foreground=[("disabled", border)])
-
-            # --- выпадающие списки ---
-            s.configure("TCombobox",
-                        fieldbackground=field, background=field,
-                        foreground=fg, arrowcolor=fg,
-                        bordercolor=border)
-            s.map("TCombobox",
-                  fieldbackground=[("readonly", field)],
-                  selectbackground=[("readonly", field)],
-                  selectforeground=[("readonly", fg)],
-                  foreground=[("disabled", border)])
-            # выпадающий list у Combobox — это обычный tk.Listbox,
-            # ему цвет задаётся через option_add
-            try:
-                self.root.option_add("*TCombobox*Listbox.background", field)
-                self.root.option_add("*TCombobox*Listbox.foreground", fg)
-                self.root.option_add("*TCombobox*Listbox.selectBackground", select)
-                self.root.option_add("*TCombobox*Listbox.selectForeground", fg)
-            except Exception:
-                pass
-
-            # --- вкладки ---
-            s.configure("TNotebook", background=bg, bordercolor=border)
-            s.configure("TNotebook.Tab",
-                        background=bg, foreground=fg,
-                        padding=(12, 6), bordercolor=border)
-            s.map("TNotebook.Tab",
-                  background=[("selected", field), ("active", select)],
-                  foreground=[("selected", accent)])
-
-            # --- полосы прокрутки ---
-            s.configure("TScrollbar",
-                        background=field, troughcolor=bg,
-                        bordercolor=border, arrowcolor=fg)
-            s.map("TScrollbar",
-                  background=[("active", select)])
-
-            # --- разделители ---
-            s.configure("TSeparator", background=border)
-
     def _style_ttk(self, t):
-        """Красит ttk-виджеты под палитру темы. Работает только с clam."""
+        """Красит ttk-виджеты под палитру темы (стиль clam)."""
         s = ttk.Style()
 
         bg     = t.get("bg",      "#1e1e1e")
@@ -1113,21 +1031,17 @@ class App:
         border = t.get("border",  "#3c3c3c")
         accent = t.get("accent",  "#4ea1ff")
 
-        # --- контейнеры ---
-        for cls in ("TFrame", "TLabelframe", "TNotebook",
-                    "TPanedwindow"):
+        for cls in ("TFrame", "TLabelframe", "TNotebook", "TPanedwindow"):
             s.configure(cls, background=bg, bordercolor=border,
                         lightcolor=bg, darkcolor=bg)
         s.configure("TLabelframe.Label", background=bg, foreground=fg)
 
-        # --- тексты ---
         for cls in ("TLabel", "TCheckbutton", "TRadiobutton"):
             s.configure(cls, background=bg, foreground=fg)
             s.map(cls,
                   background=[("active", bg)],
                   foreground=[("disabled", border)])
 
-        # --- кнопки ---
         for cls in ("TButton", "Smooth.TButton", "Toolbutton"):
             s.configure(cls,
                         background=field, foreground=fg,
@@ -1140,7 +1054,6 @@ class App:
                               ("disabled", bg)],
                   foreground=[("disabled", border)])
 
-        # --- поля ввода ---
         s.configure("TEntry",
                     fieldbackground=field, foreground=fg,
                     bordercolor=border,
@@ -1149,7 +1062,6 @@ class App:
               fieldbackground=[("readonly", bg)],
               foreground=[("disabled", border)])
 
-        # --- комбобоксы ---
         s.configure("TCombobox",
                     fieldbackground=field, background=field,
                     foreground=fg, arrowcolor=fg,
@@ -1160,13 +1072,12 @@ class App:
               selectbackground=[("readonly", field)],
               selectforeground=[("readonly", fg)],
               foreground=[("disabled", border)])
-        # выпадающий список комбобокса — обычный tk.Listbox
+
         self.root.option_add("*TCombobox*Listbox.background", field)
         self.root.option_add("*TCombobox*Listbox.foreground", fg)
         self.root.option_add("*TCombobox*Listbox.selectBackground", select)
         self.root.option_add("*TCombobox*Listbox.selectForeground", fg)
 
-        # --- вкладки ---
         s.configure("TNotebook", background=bg, bordercolor=border,
                     lightcolor=bg, darkcolor=bg)
         s.configure("TNotebook.Tab",
@@ -1177,7 +1088,6 @@ class App:
               background=[("selected", field), ("active", select)],
               foreground=[("selected", accent)])
 
-        # --- скроллбары ---
         s.configure("TScrollbar",
                     background=field, troughcolor=bg,
                     bordercolor=border, arrowcolor=fg,
@@ -1185,7 +1095,6 @@ class App:
         s.map("TScrollbar",
               background=[("active", select)])
 
-        # --- разделители ---
         s.configure("TSeparator", background=border)
 
     def _apply_theme(self, name):
@@ -1194,11 +1103,8 @@ class App:
         self.theme = name
         t = THEMES[name]
 
-        # --- выбор базового ttk-движка ---
-        is_base = name in BASE_THEMES  # dark / light / black
-
+        is_base = name in BASE_THEMES
         if is_base:
-            # для базовых — родной sv-ttk (нативный вид)
             sv = t.get("sv") or "dark"
             if sv not in ("dark", "light", "auto"):
                 sv = "dark"
@@ -1211,13 +1117,11 @@ class App:
                 except Exception:
                     pass
         else:
-            # для кастомных — clam, т.к. sv-ttk игнорирует наши цвета
             try:
                 ttk.Style().theme_use("clam")
             except Exception:
                 pass
 
-        # --- свои стили поверх (для всех тем) ---
         try:
             self._style_ttk(t)
         except Exception as e:
@@ -1231,7 +1135,6 @@ class App:
 
         self.root.configure(bg=t["bg"])
 
-        # ИС 1 и ИС 2
         for w in (self.editor, self.output):
             w.configure(
                 bg=t["field"], fg=t["fg"],
@@ -1243,7 +1146,6 @@ class App:
             if isinstance(w, HighlightedText):
                 w.update_colors(name)
 
-        # Примеры и шаблоны
         for w in (self.ex_txt, self.cfg_txt):
             w.configure(
                 bg=t["field"], fg=t["fg"],
@@ -1251,71 +1153,15 @@ class App:
                 selectbackground=t["select"],
                 selectforeground=t["fg"])
 
-        # Терминал
         self.term.configure(
             bg=t["term_bg"], fg=t["term_fg"],
             insertbackground=t["term_fg"],
             selectbackground=t["select"],
             selectforeground=t["fg"])
 
-        # --- О программе ---
         if hasattr(self, "about_txt"):
-            self.about_txt.configure(
-                bg=t["bg"], fg=t["fg"],
-                insertbackground=t["fg"],
-                selectbackground=t["select"],
-                selectforeground=t["fg"])
+            self._apply_theme_about(t)
 
-            # определить, светлая ли тема
-            def _is_light(hex_color: str) -> bool:
-                h = hex_color.lstrip("#")
-                r, g, b = (int(h[i:i+2], 16) for i in (0, 2, 4))
-                return (0.299 * r + 0.587 * g + 0.114 * b) > 128
-            light = _is_light(t["bg"])
-
-            if light:
-                C = {
-                    "ok":    "#1f7a2e",
-                    "bad":   "#a51e35",
-                    "warn":  "#b86a10",
-                    "path":  "#155a7a",
-                    "cmd":   "#7a6200",
-                    "num":   "#8a4a10",
-                    "os":    "#5a3a8a",
-                    "pyver": "#1a5c8a",
-                    "ext":   "#155a7a",
-                }
-            else:
-                C = {
-                    "ok":    "#4ba554",
-                    "bad":   "#c23a58",
-                    "warn":  "#dd8a33",
-                    "path":  "#37a6b8",
-                    "cmd":   "#c7b53a",
-                    "num":   "#dd8a33",
-                    "os":    "#a95abf",
-                    "pyver": "#4fa8d8",
-                    "ext":   "#37a6b8",
-                }
-
-            self.about_txt.tag_configure("h1", foreground=t["accent"])
-            self.about_txt.tag_configure("h2", foreground=t["accent"])
-            self.about_txt.tag_configure("h3", foreground=t["accent"])
-            self.about_txt.tag_configure("accent", foreground=t["accent"])
-            self.about_txt.tag_configure("key", foreground=t["accent"])
-            self.about_txt.tag_configure("ver", foreground=t["accent"])
-
-            self.about_txt.tag_configure("ok",    foreground=C["ok"])
-            self.about_txt.tag_configure("bad",   foreground=C["bad"])
-            self.about_txt.tag_configure("warn",  foreground=C["warn"])
-            self.about_txt.tag_configure("path",  foreground=C["path"])
-            self.about_txt.tag_configure("cmd",   foreground=C["cmd"])
-            self.about_txt.tag_configure("num",   foreground=C["num"])
-            self.about_txt.tag_configure("os",    foreground=C["os"])
-            self.about_txt.tag_configure("pyver", foreground=C["pyver"])
-            self.about_txt.tag_configure("ext",   foreground=C["ext"])
-            self.about_txt.tag_configure("dim",   foreground=t["border"])
-        # Списки — с учётом UI_SETTINGS["listbox_theme"]
         lb = UI_SETTINGS["listbox_theme"].get(name, {})
         lb_bg     = lb.get("bg", t["field"])
         lb_fg     = lb.get("fg", t["fg"])
@@ -1330,7 +1176,6 @@ class App:
                     selectbackground=lb_sel_bg,
                     selectforeground=lb_sel_fg)
 
-        # Холст Rivulet
         if (self.rivulet_canvas is not None
                 and hasattr(self.rivulet_canvas, "canvas")):
             try:
@@ -1339,7 +1184,6 @@ class App:
             except Exception:
                 pass
 
-        # Холст Piet
         if (self.piet_canvas is not None
                 and hasattr(self.piet_canvas, "canvas")):
             try:
@@ -1348,11 +1192,9 @@ class App:
             except Exception:
                 pass
 
-        # Превью темы
         if hasattr(self, "theme_list"):
             self._on_theme_select()
 
-        # Звёздочка текущей темы
         if hasattr(self, "theme_list"):
             keys = list(THEMES.keys())
             if name in keys:
@@ -1361,14 +1203,71 @@ class App:
                 self.theme_list.selection_set(idx)
                 self.theme_list.see(idx)
 
-        # === SANDBOX: покрасить все песочницы ===
         for panel in getattr(self, "_sandbox_panels", []):
             try:
                 panel.apply_theme(name)
             except Exception:
                 pass
 
-        self.set_status(f"Тема: {name}")
+        self.set_status(f"{tr('status_theme')} {name}")
+
+    def _apply_theme_about(self, t):
+        """Красит текст About под палитру темы."""
+        self.about_txt.configure(
+            bg=t["bg"], fg=t["fg"],
+            insertbackground=t["fg"],
+            selectbackground=t["select"],
+            selectforeground=t["fg"])
+
+        def _is_light(hex_color: str) -> bool:
+            h = hex_color.lstrip("#")
+            r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+            return (0.299 * r + 0.587 * g + 0.114 * b) > 128
+
+        light = _is_light(t["bg"])
+
+        if light:
+            C = {
+                "ok":    "#1f7a2e",
+                "bad":   "#a51e35",
+                "warn":  "#b86a10",
+                "path":  "#155a7a",
+                "cmd":   "#7a6200",
+                "num":   "#8a4a10",
+                "os":    "#5a3a8a",
+                "pyver": "#1a5c8a",
+                "ext":   "#155a7a",
+            }
+        else:
+            C = {
+                "ok":    "#4ba554",
+                "bad":   "#c23a58",
+                "warn":  "#dd8a33",
+                "path":  "#37a6b8",
+                "cmd":   "#c7b53a",
+                "num":   "#dd8a33",
+                "os":    "#a95abf",
+                "pyver": "#4fa8d8",
+                "ext":   "#37a6b8",
+            }
+
+        self.about_txt.tag_configure("h1", foreground=t["accent"])
+        self.about_txt.tag_configure("h2", foreground=t["accent"])
+        self.about_txt.tag_configure("h3", foreground=t["accent"])
+        self.about_txt.tag_configure("accent", foreground=t["accent"])
+        self.about_txt.tag_configure("key", foreground=t["accent"])
+        self.about_txt.tag_configure("ver", foreground=t["accent"])
+
+        self.about_txt.tag_configure("ok",    foreground=C["ok"])
+        self.about_txt.tag_configure("bad",   foreground=C["bad"])
+        self.about_txt.tag_configure("warn",  foreground=C["warn"])
+        self.about_txt.tag_configure("path",  foreground=C["path"])
+        self.about_txt.tag_configure("cmd",   foreground=C["cmd"])
+        self.about_txt.tag_configure("num",   foreground=C["num"])
+        self.about_txt.tag_configure("os",    foreground=C["os"])
+        self.about_txt.tag_configure("pyver", foreground=C["pyver"])
+        self.about_txt.tag_configure("ext",   foreground=C["ext"])
+        self.about_txt.tag_configure("dim",   foreground=t["border"])
 
     def cycle_theme(self, event=None):
         """Переключить тему на следующую в списке THEMES."""
@@ -1376,47 +1275,9 @@ class App:
         idx = keys.index(self.theme) if self.theme in keys else 0
         self._apply_theme(keys[(idx + 1) % len(keys)])
 
-        t = THEMES[self.theme]
-
-        # --- sv-ttk: только dark / light / auto ---
-        sv = t.get("sv") or "dark"
-        if sv not in ("dark", "light", "auto"):
-            sv = "dark"
-        try:
-            import sv_ttk
-            sv_ttk.set_theme(sv)
-        except Exception:
-            try:
-                ttk.Style().theme_use("clam")
-            except Exception:
-                pass
-
-        # ★ НОВОЕ: перекрасить все ttk-виджеты под палитру темы
-        try:
-            self._style_ttk(t)
-        except Exception:
-            pass
-
-        # ... дальше как было: root.configure, editor, output и т.д.
-
     # ==========================================================
-    #  ИНТЕРФЕЙС
+    #  ИНТЕРФЕЙС — КНОПКИ / СПИСКИ
     # ==========================================================
-    def _refresh_button_list(self):
-        if not hasattr(self, "btn_list"):
-            return
-        self.btn_list.delete(0, "end")
-        for key, (btn, default) in self._buttons.items():
-            current = btn.cget("text")
-            self.btn_list.insert("end", f" {key:12} = {current}")
-
-    def _on_btn_select(self, event=None):
-        sel = self.btn_list.curselection()
-        if not sel:
-            return
-        key = list(self._buttons.keys())[sel[0]]
-        self.btn_text_var.set(self._buttons[key][0].cget("text"))
-
     def _apply_btn_rename(self):
         sel = self.btn_list.curselection()
         if not sel:
@@ -1429,18 +1290,33 @@ class App:
         UI_SETTINGS["button_labels"][key] = new
         save_config()
         self._refresh_button_list()
-        self.log(f"$ кнопка «{key}» → «{new}»")
+        self.log("$ " + tf("msg_btn_renamed", key=key, new=new))
 
     def _reset_button_labels(self):
-        if not messagebox.askyesno("Сброс",
-                                    "Вернуть все подписи по умолчанию?"):
+        if not messagebox.askyesno(
+                tr("dlg_reset"),
+                tr("dlg_confirm_reset_labels")):
             return
         for key, (btn, default) in self._buttons.items():
             btn.config(text=default)
         UI_SETTINGS["button_labels"].clear()
         save_config()
         self._refresh_button_list()
-        self.log("$ все подписи сброшены")
+        self.log("$ " + tr("msg_labels_reset"))
+
+    def _refresh_button_list(self):
+        if not hasattr(self, "btn_list"):
+            return
+        self.btn_list.delete(0, "end")
+        for key, (btn, default) in self._buttons.items():
+            self.btn_list.insert("end", f" {key:<12} = {btn.cget('text')}")
+
+    def _on_btn_select(self, event=None):
+        sel = self.btn_list.curselection()
+        if not sel:
+            return
+        key = list(self._buttons.keys())[sel[0]]
+        self.btn_text_var.set(self._buttons[key][0].cget("text"))
 
     def _refresh_listbox_editor(self):
         if not hasattr(self, "lb_colors"):
@@ -1462,7 +1338,7 @@ class App:
         save_config()
         self._refresh_listbox_editor()
         self._apply_theme(self.theme)
-        self.log(f"$ цвета списков для «{name}» сброшены")
+        self.log("$ " + tf("msg_lb_colors_reset", name=name))
 
     # ==========================================================
     #  ШАБЛОНЫ
@@ -1511,28 +1387,28 @@ class App:
         old = self.tpl_list.get(sel[0])
         new = self.tpl_name_var.get().strip()
         if not new:
-            messagebox.showerror("Ошибка", "Имя пустое")
+            messagebox.showerror(tr("dlg_reset"),
+                                 tr("err_template_empty_name"))
             return
         code = self.cfg_txt.get("1.0", "end-1c")
         items = list(lang.templates.items())
         lang.templates.clear()
         for k, v in items:
-            if k == old:
-                lang.templates[new] = code
-            else:
-                lang.templates[k] = v
+            lang.templates[new if k == old else k] = code if k == old else v
         save_config()
         self._refresh_template_list()
         self.on_src()
-        self.log(f"$ шаблон «{new}» сохранён")
+        self.log("$ " + tf("msg_tpl_saved", name=new))
 
     def _add_new_template(self):
         lang = registry.get(self.cfg_lang.get())
         if not lang:
             return
         name = simpledialog.askstring(
-            "Новый шаблон", "Название:",
-            initialvalue="[User] Новый", parent=self.root)
+            tr("dlg_new_template"), tr("dlg_name"),
+            initialvalue=tr("dlg_new_template_default"),
+            parent=self.root,
+        )
         if not name or name in lang.templates:
             return
         lang.templates[name] = ""
@@ -1553,7 +1429,9 @@ class App:
         if not sel:
             return
         name = self.tpl_list.get(sel[0])
-        if not messagebox.askyesno("Удаление", f"Удалить «{name}»?"):
+        if not messagebox.askyesno(
+                tr("dlg_delete"),
+                tf("dlg_confirm_delete", name=name)):
             return
         lang.templates.pop(name, None)
         save_config()
@@ -1569,8 +1447,9 @@ class App:
             return
         old = self.tpl_list.get(sel[0])
         new = simpledialog.askstring(
-            "Переименовать", "Новое имя:",
-            initialvalue=old, parent=self.root)
+            tr("dlg_rename"), tr("dlg_rename_prompt"),
+            initialvalue=old, parent=self.root,
+        )
         if not new or new == old or new in lang.templates:
             return
         items = list(lang.templates.items())
@@ -1586,9 +1465,8 @@ class App:
         if not lang:
             return
         if not messagebox.askyesno(
-            "Сброс",
-            f"Сбросить шаблоны «{lang.title}» к встроенным?\n"
-            f"Пользовательские изменения будут потеряны."):
+                tr("dlg_reset"),
+                tf("dlg_reset_templates", title=lang.title)):
             return
         try:
             mod_name = getattr(lang, "_module_name", None) or lang.name
@@ -1604,9 +1482,9 @@ class App:
             save_config()
             self._refresh_template_list()
             self.on_src()
-            self.log(f"$ шаблоны «{lang.title}» сброшены")
+            self.log("$ " + tf("msg_tpl_reset", title=lang.title))
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     # ==========================================================
     #  ЯЗЫКИ
@@ -1627,7 +1505,7 @@ class App:
             for name in list_disabled():
                 self.disabled_list.insert("end", f" {name}")
         except Exception as e:
-            self.log(f"! не удалось прочитать langs_disabled: {e}")
+            self.log("! " + tf("err_read_disabled", e=e))
 
     def _disable_selected_lang(self):
         sel = self.lang_list.curselection()
@@ -1637,20 +1515,20 @@ class App:
         name = entry[entry.rfind("(") + 1:-1]
         if registry.is_system(name):
             messagebox.showerror(
-                "Ошибка",
-                f"«{name}» — системный язык, удалить нельзя")
+                tr("dlg_disable"),
+                tf("err_system_lang", name=name),
+            )
             return
         if not messagebox.askyesno(
-            "Отключить",
-            f"Отключить язык «{name}»?\n"
-            f"Файл переместится в langs_disabled/."):
+                tr("dlg_disable"),
+                tf("dlg_confirm_disable", name=name)):
             return
         if disable_lang(name):
             self._refresh_language_list()
             self._refresh_disabled_list()
             self._refresh_template_languages()
             self.on_mode()
-            self.log(f"$ язык «{name}» отключён (перезапустите приложение)")
+            self.log("$ " + tf("msg_lang_disabled", name=name))
 
     def _enable_selected_lang(self):
         sel = self.disabled_list.curselection()
@@ -1658,12 +1536,11 @@ class App:
             return
         mod_name = self.disabled_list.get(sel[0]).strip()
         if not messagebox.askyesno(
-            "Восстановить",
-            f"Вернуть язык из «{mod_name}.py»?"):
+                tr("dlg_restore"),
+                tf("dlg_confirm_restore", mod=mod_name)):
             return
         if enable_lang(mod_name):
-            self.log(f"$ «{mod_name}.py» возвращён "
-                     f"(перезапустите приложение)")
+            self.log("$ " + tf("msg_lang_enabled", mod=mod_name))
 
     def _rename_language(self):
         sel = self.lang_list.curselection()
@@ -1675,9 +1552,10 @@ class App:
         if not lang:
             return
         new_title = simpledialog.askstring(
-            "Переименовать язык",
-            f"Новое отображаемое имя для «{lang.title}»:",
-            initialvalue=lang.title, parent=self.root)
+            tr("dlg_rename_lang"),
+            tf("dlg_rename_lang_prompt", title=lang.title),
+            initialvalue=lang.title, parent=self.root,
+        )
         if not new_title or new_title == lang.title:
             return
         lang.title = new_title
@@ -1685,7 +1563,8 @@ class App:
         save_config()
         self._refresh_language_list()
         self.on_src()
-        self.log(f"$ язык «{name}» → «{new_title}»")
+        self.log("$ " + tf("msg_lang_renamed",
+                           name=name, title=new_title))
 
     def load_custom_lang(self):
         path = filedialog.askopenfilename(
@@ -1697,9 +1576,9 @@ class App:
             self.on_mode()
             self._refresh_language_list()
             self._refresh_template_languages()
-            self.log(f"$ плагин: {name}")
+            self.log("$ " + tf("msg_plugin_loaded", name=name))
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     def open_plugins_dir(self):
         try:
@@ -1708,15 +1587,14 @@ class App:
             else:
                 os.system(f"xdg-open '{PLUGINS_DIR}'")
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     # ==========================================================
     #  СОБЫТИЯ
     # ==========================================================
     def on_mode(self, event=None):
         label = self.mode.get()
-        _, s_cat, _ = next(m for m in MODES if m[0] == label)
-        # Сбросить фильтр типа при смене режима
+        _, s_cat, _ = next(m for m in _modes() if m[0] == label)
         if hasattr(self, "tpl_type"):
             self.tpl_type.current(0)
 
@@ -1735,10 +1613,9 @@ class App:
 
         self._refresh_language_list()
         self._refresh_template_list()
-        self.set_status(f"Режим: {label}")
+        self.set_status(f"{tr('status_mode')} {label}")
 
     def on_tpl_type(self, event=None):
-        """Изменение фильтра типа → перестроить список шаблонов."""
         self._refresh_tpl_list()
 
     def _refresh_tpl_list(self):
@@ -1748,13 +1625,21 @@ class App:
         if not lang:
             self.tpl["values"] = []
             return
-        sel = self.tpl_type.get() if hasattr(self, "tpl_type") else "Все"
-        if sel == "Все" or not sel:
+
+        sel_label = (self.tpl_type.get()
+                     if hasattr(self, "tpl_type") else "")
+        code = next(
+            (c for lbl, c in getattr(self, "_tpl_type_pairs", [])
+             if lbl == sel_label),
+            None,
+        )
+
+        if code is None:
             filtered = list(lang.templates.keys())
         else:
-            code = TYPE_BY_LABEL.get(sel)
             filtered = [n for n in lang.templates
                         if _tpl_classify(n) == code]
+
         self.tpl["values"] = filtered
         if filtered:
             self.tpl.current(0)
@@ -1766,9 +1651,10 @@ class App:
         name = self.src.get()
         lang = registry.get(name)
         if not lang:
-            self.src_label.config(text="Язык №1:")
+            self.src_label.config(text=tr("yazyk_1"))
             return
-        self.src_label.config(text=f"Язык №1: {lang.title} ({lang.category})")
+        self.src_label.config(
+            text=f"{tr('yazyk_1')} {lang.title} ({lang.category})")
         if isinstance(self.editor, HighlightedText):
             self.editor.set_language(name)
         self._refresh_tpl_list()
@@ -1777,15 +1663,16 @@ class App:
         name = self.dst.get()
         lang = registry.get(name)
         if not lang:
-            self.dst_label.config(text="Язык №2:")
+            self.dst_label.config(text=tr("yazyk_2"))
             return
-        self.dst_label.config(text=f"Язык №2: {lang.title} ({lang.category})")
+        self.dst_label.config(
+            text=f"{tr('yazyk_2')} {lang.title} ({lang.category})")
         if isinstance(self.output, HighlightedText):
             self.output.set_language(name)
 
     def _refresh_dst_list(self):
         label = self.mode.get()
-        _, _, d_cat = next(m for m in MODES if m[0] == label)
+        _, _, d_cat = next(m for m in _modes() if m[0] == label)
         src_name = self.src.get()
         vals = [l.name for l in registry.by_category(d_cat)
                 if l.name != src_name]
@@ -1799,7 +1686,7 @@ class App:
 
     def _refresh_src_list(self):
         label = self.mode.get()
-        _, s_cat, _ = next(m for m in MODES if m[0] == label)
+        _, s_cat, _ = next(m for m in _modes() if m[0] == label)
         dst_name = self.dst.get()
         vals = [l.name for l in registry.by_category(s_cat)
                 if l.name != dst_name]
@@ -1831,9 +1718,8 @@ class App:
             self.editor.insert("1.0", code)
             if isinstance(self.editor, HighlightedText):
                 self.editor.highlight()
-            self.set_status(f"Шаблон: {tn}")
+            self.set_status(f"{tr('status_template')} {tn}")
 
-            # Синхронизация с 2D-холстами
             if name == "rivulet" and self.rivulet_canvas is not None:
                 try:
                     self.rivulet_canvas.from_text(code)
@@ -1867,29 +1753,29 @@ class App:
                 self.output.highlight()
             self.output.config(state="disabled")
 
-            # === CANVAS-SYNC + AUTOSWITCH ===
-            # Показать результат в 2D-холстах И переключиться на них.
             if dst == "piet" and getattr(self, "piet_canvas", None) is not None:
                 try:
                     self.piet_canvas.from_text(result)
-                    self.log("$ Piet Canvas: результат перевода загружен")
-                    self._switch_to_tab("Piet Canvas")
+                    self.log("$ " + tf("msg_canvas_loaded",
+                                       name=tr("piet_canvas")))
+                    self._switch_to_tab(tr("piet_canvas"))
                 except Exception as e:
-                    self.log(f"! Piet Canvas: {e}")
+                    self.log("! " + tf("err_generic", e=e))
 
-            if dst == "rivulet" and getattr(self, "rivulet_canvas", None) is not None:
+            if (dst == "rivulet"
+                    and getattr(self, "rivulet_canvas", None) is not None):
                 try:
                     self.rivulet_canvas.from_text(result)
-                    self.log("$ Rivulet Canvas: результат перевода загружен")
-                    self._switch_to_tab("Rivulet Canvas")
+                    self.log("$ " + tf("msg_canvas_loaded",
+                                       name=tr("rivulet_canvas")))
+                    self._switch_to_tab(tr("rivulet_canvas"))
                 except Exception as e:
-                    self.log(f"! Rivulet Canvas: {e}")
-            # === /CANVAS-SYNC + AUTOSWITCH ===
+                    self.log("! " + tf("err_generic", e=e))
 
-            self.log(f"$ переведено {src} → {dst}")
-            self.set_status("Готово")
+            self.log("$ " + tf("msg_translated", src=src, dst=dst))
+            self.set_status(tr("status_ready"))
         except Exception as e:
-            self.log(f"! ошибка: {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     def do_run(self):
         name = self.src.get()
@@ -1900,11 +1786,11 @@ class App:
         try:
             out = lang.execute(code)
             if out is None:
-                self.log(f"! {name}: не выполнилось")
+                self.log("! " + tf("err_run_failed", name=name))
                 return
-            self.log(f"$ вывод: {out!r}")
+            self.log("$ " + tf("err_output", out=repr(out)))
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     def do_open(self):
         path = filedialog.askopenfilename()
@@ -1918,9 +1804,9 @@ class App:
             self.editor.insert("1.0", text)
             if isinstance(self.editor, HighlightedText):
                 self.editor.highlight()
-            self.log(f"$ загружено: {path}")
+            self.log("$ " + tf("msg_loaded", path=path))
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     def do_save(self):
         path = filedialog.asksaveasfilename(defaultextension=".txt")
@@ -1930,16 +1816,15 @@ class App:
             content = self.output.get("1.0", "end-1c")
             with open(path, "w", encoding="utf-8") as f:
                 f.write(content)
-            self.log(f"$ сохранено: {path}")
+            self.log("$ " + tf("msg_saved", path=path))
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     def do_clear(self):
         self.editor.delete("1.0", "end")
         self.output.config(state="normal")
         self.output.delete("1.0", "end")
         self.output.config(state="disabled")
-        self._last_result = None
 
     # ==========================================================
     #  ТЕРМИНАЛ
@@ -1970,7 +1855,7 @@ class App:
         self.root.clipboard_clear()
         self.root.clipboard_append(t)
         self.root.update()
-        self.log(f"$ ИС 1 → буфер ({len(t)})")
+        self.log("$ " + tf("msg_clip_src", n=len(t)))
 
     def paste_src(self):
         try:
@@ -1986,7 +1871,7 @@ class App:
         self.root.clipboard_clear()
         self.root.clipboard_append(t)
         self.root.update()
-        self.log(f"$ ИС 2 → буфер ({len(t)})")
+        self.log("$ " + tf("msg_clip_dst", n=len(t)))
 
     # ==========================================================
     #  ПРИМЕРЫ (TXT)
@@ -2006,9 +1891,9 @@ class App:
         try:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.ex_txt.get("1.0", "end-1c"))
-            self.log(f"$ сохранено: {path}")
+            self.log("$ " + tf("msg_saved", path=path))
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
 
     def _import_examples(self):
         path = filedialog.askopenfilename(filetypes=[("Text", "*.txt")])
@@ -2017,7 +1902,7 @@ class App:
         try:
             content = open(path, encoding="utf-8").read()
         except Exception as e:
-            self.log(f"! {e}")
+            self.log("! " + tf("err_generic", e=e))
             return
 
         cur_title, cur_name, buf = None, None, []
@@ -2053,7 +1938,7 @@ class App:
     def show_template_stats(self):
         """Debug: печатает статистику типов шаблонов в терминал."""
         from core.template_types import stats
-        self.log("--- шаблоны ---")
+        self.log("--- " + tr("shablony_list") + " ---")
         for lang in registry.all():
             s = stats(lang.templates)
             self.log(
@@ -2063,56 +1948,49 @@ class App:
             )
 
     # ==========================================================
-    #  ВКЛАДКА «ПЕСОЧНИЦА»  (=== SANDBOX ===)
+    #  ВКЛАДКА «МОЗАИКА»
     # ==========================================================
     def _build_tab_mosaic(self):
         try:
             from ui.mosaic_tab import MosaicTab
         except Exception as e:
             tab = ttk.Frame(self.tabs, padding=10)
-            self.tabs.add(tab, text="Мозаика")
+            self.tabs.add(tab, text=tr("mozaika"))
             ttk.Label(tab,
-                      text=f"Не удалось загрузить Мозаику:\n{e}",
+                      text=tf("err_canvas_load", name=tr("mozaika")) + f"\n{e}",
                       foreground="red", wraplength=800).pack(pady=20)
             return
         tab = ttk.Frame(self.tabs, padding=6)
-        self.tabs.add(tab, text="Мозаика")
+        self.tabs.add(tab, text=tr("mozaika"))
         try:
             self.mosaic_tab = MosaicTab(tab, self)
         except Exception as e:
             ttk.Label(tab,
-                      text=f"Ошибка при создании Мозаики:\n{e}",
+                      text=tf("err_canvas_create",
+                              name=tr("mozaika")) + f"\n{e}",
                       foreground="red", wraplength=800).pack(pady=20)
 
+    # ==========================================================
+    #  ВКЛАДКА «ПЕСОЧНИЦА»
+    # ==========================================================
     def _build_tab_sandbox(self):
         try:
             from ui.widgets.sandbox_panel import SandboxPanel
         except Exception as e:
             tab = ttk.Frame(self.tabs, padding=10)
-            self.tabs.add(tab, text="Песочница")
-            ttk.Label(
-                tab,
-                text=f"Не удалось загрузить песочницу:\n{e}",
-                foreground="red", wraplength=800,
-            ).pack(pady=20, padx=20)
+            self.tabs.add(tab, text=tr("pesochnica"))
+            ttk.Label(tab,
+                      text=tf("err_canvas_load",
+                              name=tr("pesochnica")) + f"\n{e}",
+                      foreground="red", wraplength=800).pack(pady=20, padx=20)
             return
 
-        tab = ttk.Frame(self.tabs, padding=10)
-        self.tabs.add(tab, text="Песочница")
-        try:
-            self.sandbox = SandboxPanel(
-                tab, self,
-                initial_lang="python",
-                # код подгрузится автоматически из шаблонов языка
-            )
-            self.sandbox.pack(fill="both", expand=True)
+        self.sandbox = self._load_tab_widget(
+            "pesochnica", tr("pesochnica"),
+            lambda parent: SandboxPanel(parent, self, initial_lang="python"),
+        )
+        if self.sandbox is not None:
             self._sandbox_panels.append(self.sandbox)
-        except Exception as e:
-            ttk.Label(
-                tab,
-                text=f"Ошибка при создании песочницы:\n{e}",
-                foreground="red", wraplength=800,
-            ).pack(pady=20, padx=20)
 
     def _switch_to_tab(self, tab_text: str):
         """Переключить Notebook на вкладку с данным текстом."""
@@ -2144,57 +2022,57 @@ class App:
             from langs.piet import EXAMPLES, COMMANDS
         except Exception as e:
             tab = ttk.Frame(self.tabs, padding=10)
-            self.tabs.add(tab, text="Piet-ASM")
-            ttk.Label(tab, text=f"Ошибка: {e}",
+            self.tabs.add(tab, text=tr("piet_asm"))
+            ttk.Label(tab, text=tf("err_generic", e=e),
                       foreground="red").pack()
             return
 
         tab = ttk.Frame(self.tabs, padding=10)
-        self.tabs.add(tab, text="Piet-ASM")
+        self.tabs.add(tab, text=tr("piet_asm"))
 
         # --- верхняя панель ---
         top = ttk.Frame(tab)
         top.pack(fill="x", pady=(0, 6))
 
-        ttk.Label(top, text="Пример:").pack(side="left", padx=(0, 4))
+        ttk.Label(top, text=tr("primer")).pack(side="left", padx=(0, 4))
         self.asm_example_cb = ttk.Combobox(
             top, values=list(EXAMPLES.keys()),
             state="readonly", width=22)
         self.asm_example_cb.pack(side="left", padx=(0, 10))
-        self.asm_example_cb.bind(
-            "<<ComboboxSelected>>", self._asm_load_example)
+        self.asm_example_cb.bind("<<ComboboxSelected>>",
+                                  self._asm_load_example)
         if EXAMPLES:
             self.asm_example_cb.current(0)
 
-        ttk.Button(top, text="▶ Запустить",
+        ttk.Button(top, text=tr("zapustit_play"),
                    command=self._asm_run,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(top, text="🔍 Разобрать",
+        ttk.Button(top, text=tr("razobrat_search"),
                    command=self._asm_explain,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(top, text="📦 Плитки",
+        ttk.Button(top, text=tr("plitki_box"),
                    command=self._asm_show_tiles,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(top, text="Копир. результат",
+        ttk.Button(top, text=tr("kopir_rezultat"),
                    command=self._asm_copy,
                    style="Smooth.TButton").pack(side="left")
 
         self.asm_status = ttk.Label(top, text="")
         self.asm_status.pack(side="right")
 
-        # --- тело: палитра слева + редактор + результат ---
+        # --- тело ---
         body = ttk.Frame(tab)
         body.pack(fill="both", expand=True)
-        body.columnconfigure(0, weight=0)  # палитра
-        body.columnconfigure(1, weight=2)  # редактор
-        body.columnconfigure(2, weight=2)  # результат
+        body.columnconfigure(0, weight=0)
+        body.columnconfigure(1, weight=2)
+        body.columnconfigure(2, weight=2)
         body.rowconfigure(0, weight=1)
 
-        # ---- палитра команд ----
-        pal = ttk.LabelFrame(body, text="Команды", padding=4)
+        # палитра команд
+        pal = ttk.LabelFrame(body, text=tr("komandy"), padding=4)
         pal.grid(row=0, column=0, sticky="nsw", padx=(0, 4))
 
-        ttk.Label(pal, text="Клик — вставить",
+        ttk.Label(pal, text=tr("klik_vstavit"),
                   font=("Segoe UI", 8)).pack(anchor="w", pady=(0, 2))
 
         self.asm_cmd_list = tk.Listbox(
@@ -2207,11 +2085,9 @@ class App:
                                command=self.asm_cmd_list.yview)
         sb_cmd.pack(side="left", fill="y")
         self.asm_cmd_list.config(yscrollcommand=sb_cmd.set)
-        self.asm_cmd_list.bind("<Double-Button-1>",
-                               self._asm_insert_cmd)
+        self.asm_cmd_list.bind("<Double-Button-1>", self._asm_insert_cmd)
         self.asm_cmd_list.bind("<Return>", self._asm_insert_cmd)
 
-        # порядок — как в COMMANDS
         _ORDER = ["push", "pop", "add", "sub", "mul", "div", "mod",
                   "not", "gt", "dp", "cc", "dup", "roll", "write",
                   "read", "out_num", "out_char", "nop"]
@@ -2219,12 +2095,12 @@ class App:
             if c in COMMANDS:
                 self.asm_cmd_list.insert("end", c)
 
-        ttk.Button(pal, text="+ push N…",
+        ttk.Button(pal, text=tr("push_n"),
                    command=self._asm_insert_push,
                    style="Smooth.TButton").pack(fill="x", pady=(4, 0))
 
-        # ---- редактор ----
-        left = ttk.LabelFrame(body, text="Piet-ASM код", padding=4)
+        # редактор
+        left = ttk.LabelFrame(body, text=tr("piet_asm_kod"), padding=4)
         left.grid(row=0, column=1, sticky="nsew", padx=4)
 
         self.asm_editor = tk.Text(
@@ -2232,8 +2108,8 @@ class App:
             bd=0, padx=6, pady=4, undo=True)
         self.asm_editor.pack(fill="both", expand=True)
 
-        # ---- результат ----
-        right = ttk.LabelFrame(body, text="Результат", padding=4)
+        # результат
+        right = ttk.LabelFrame(body, text=tr("rezultat"), padding=4)
         right.grid(row=0, column=2, sticky="nsew", padx=(4, 0))
 
         self.asm_output = tk.Text(
@@ -2241,8 +2117,8 @@ class App:
             bd=0, padx=6, pady=4, state="disabled", height=8)
         self.asm_output.pack(fill="both", expand=True)
 
-        # --- нижняя панель: плитки ---
-        bottom = ttk.LabelFrame(tab, text="Плитки 16×16", padding=4)
+        # нижняя панель: плитки
+        bottom = ttk.LabelFrame(tab, text=tr("plitki_16_16"), padding=4)
         bottom.pack(fill="both", expand=False, pady=(6, 0))
 
         pbar = ttk.Frame(bottom)
@@ -2251,14 +2127,14 @@ class App:
         ttk.Button(pbar, text="◀", width=3,
                    command=self._asm_tile_prev,
                    style="Smooth.TButton").pack(side="left", padx=(0, 4))
-        self.asm_tile_lbl = ttk.Label(pbar, text="—/—",
+        self.asm_tile_lbl = ttk.Label(pbar, text=tr("str_81"),
                                       font=("Segoe UI", 10, "bold"))
         self.asm_tile_lbl.pack(side="left", padx=(0, 4))
         ttk.Button(pbar, text="▶", width=3,
                    command=self._asm_tile_next,
                    style="Smooth.TButton").pack(side="left", padx=(0, 12))
 
-        ttk.Label(pbar, text="Зум:").pack(side="left", padx=(0, 4))
+        ttk.Label(pbar, text=tr("zum")).pack(side="left", padx=(0, 4))
         for z in (1, 2, 4, 8):
             ttk.Button(pbar, text=f"×{z}", width=3,
                        command=lambda zz=z: self._asm_set_zoom(zz),
@@ -2271,7 +2147,7 @@ class App:
                                     highlightbackground="#666")
         self.asm_canvas.pack(side="left")
 
-        # --- состояние ---
+        # состояние
         self._asm_tiles = []
         self._asm_tile_idx = 0
         self._asm_zoom = 4
@@ -2279,9 +2155,7 @@ class App:
 
         self._asm_load_example()
 
-    # ----------------------------------------------------------
-    #  Новые методы для палитры команд
-    # ----------------------------------------------------------
+    # ---------- Piet-ASM: палитра команд ----------
     def _asm_insert_cmd(self, event=None):
         sel = self.asm_cmd_list.curselection()
         if not sel:
@@ -2292,15 +2166,15 @@ class App:
 
     def _asm_insert_push(self):
         arg = simpledialog.askinteger(
-            "push", "Аргумент push (число):",
+            tr("dlg_push"), tr("dlg_push_arg"),
             initialvalue=42, minvalue=0, maxvalue=10000,
-            parent=self.root)
+            parent=self.root,
+        )
         if arg is None:
             return
         self.asm_editor.insert("insert", f"push {arg}\n")
         self.asm_editor.focus_set()
 
-    # ----------------------------------------------------------
     def _asm_load_example(self, event=None):
         try:
             from langs.piet import EXAMPLES
@@ -2321,34 +2195,35 @@ class App:
             self.asm_output.insert("1.0", result)
             self.asm_output.config(state="disabled")
             self.asm_status.config(text="OK")
-            self.log(f"$ Piet-ASM: вывод {result!r}")
+            self.log("$ " + tf("msg_piet_asm_out", result=repr(result)))
         except Exception as e:
             self.asm_output.config(state="normal")
             self.asm_output.delete("1.0", "end")
-            self.asm_output.insert("1.0", f"Ошибка: {e}")
+            self.asm_output.insert("1.0", tf("err_generic", e=e))
             self.asm_output.config(state="disabled")
-            self.asm_status.config(text="ошибка")
-            self.log(f"! Piet-ASM: {e}")
+            self.asm_status.config(text=tr("oshibka"))
+            self.log("! " + tf("msg_piet_asm_err", e=e))
 
     def _asm_explain(self):
         try:
             from langs.piet import parse_asm, COMMANDS
             code = self.asm_editor.get("1.0", "end-1c")
             cmds = parse_asm(code)
-            lines = []
-            for i, (cmd, arg) in enumerate(cmds, 1):
-                dh, dl = COMMANDS[cmd]
-                arg_s = f" {arg}" if arg is not None else ""
-                lines.append(
-                    f"  {i:>3}. {cmd}{arg_s:<8} → delta ({dh},{dl})")
-            text = "\n".join(lines) if lines else "(пусто)"
+            lines = [
+                tf("asm_explain_line",
+                   i=i, cmd=cmd,
+                   arg=(f" {arg}" if arg is not None else ""),
+                   dh=COMMANDS[cmd][0], dl=COMMANDS[cmd][1])
+                for i, (cmd, arg) in enumerate(cmds, 1)
+            ]
+            body = "\n".join(lines) if lines else tr("empty")
+            header = tf("asm_explain_header", n=len(cmds))
             self.asm_output.config(state="normal")
             self.asm_output.delete("1.0", "end")
-            self.asm_output.insert("1.0",
-                f"Команд: {len(cmds)}\n\n{text}")
+            self.asm_output.insert("1.0", f"{header}\n\n{body}")
             self.asm_output.config(state="disabled")
         except Exception as e:
-            self.log(f"! Piet-ASM разбор: {e}")
+            self.log("! " + tf("msg_piet_asm_parse_err", e=e))
 
     def _asm_show_tiles(self):
         try:
@@ -2358,9 +2233,9 @@ class App:
             self._asm_tiles = tiles
             self._asm_tile_idx = 0
             self._asm_render_tile()
-            self.log(f"$ Piet-ASM: {len(tiles)} плиток")
+            self.log("$ " + tf("msg_piet_asm_tiles", n=len(tiles)))
         except Exception as e:
-            self.log(f"! Piet-ASM плитки: {e}")
+            self.log("! " + tf("msg_piet_asm_tiles_err", e=e))
 
     def _asm_tile_prev(self):
         if not self._asm_tiles:
@@ -2381,18 +2256,18 @@ class App:
 
     def _asm_render_tile(self):
         try:
-            import base64, io
+            import base64
+            import io
             from PIL import Image, ImageTk
         except ImportError:
             return
         if not self._asm_tiles:
-            self.asm_tile_lbl.config(text="—/—")
+            self.asm_tile_lbl.config(text=tr("str_81"))
             self.asm_canvas.delete("all")
             return
 
         n = len(self._asm_tiles)
-        self.asm_tile_lbl.config(
-            text=f"{self._asm_tile_idx + 1}/{n}")
+        self.asm_tile_lbl.config(text=f"{self._asm_tile_idx + 1}/{n}")
 
         try:
             raw = base64.b64decode(self._asm_tiles[self._asm_tile_idx])
@@ -2404,18 +2279,20 @@ class App:
             self._asm_img = ImageTk.PhotoImage(im)
             self.asm_canvas.delete("all")
             self.asm_canvas.create_image(0, 0, image=self._asm_img,
-                                          anchor="nw")
-            self.asm_canvas.config(
-                scrollregion=(0, 0, im.width, im.height))
+                                         anchor="nw")
+            self.asm_canvas.config(scrollregion=(0, 0, im.width, im.height))
         except Exception as e:
-            self.log(f"! отрисовка плитки: {e}")
+            self.log("! " + tf("msg_drawing_tile_err", e=e))
 
     def _asm_copy(self):
         text = self.asm_output.get("1.0", "end-1c")
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
-        self.log(f"$ результат в буфере ({len(text)})")
+        self.log("$ " + tf("msg_clip_result", n=len(text)))
 
+    # ==========================================================
+    #  ОКНО «ОБЪЯСНЕНИЕ»
+    # ==========================================================
     def _show_explain_window(self, title: str, text: str):
         win = tk.Toplevel(self.root)
         win.title(title)
@@ -2426,10 +2303,10 @@ class App:
         header.pack(fill="x", pady=(0, 6))
         ttk.Label(header, text=title,
                   font=("Segoe UI", 11, "bold")).pack(side="left")
-        ttk.Button(header, text="Копировать",
+        ttk.Button(header, text=tr("kopirovat"),
                    command=lambda: self._copy_text(text),
                    style="Smooth.TButton").pack(side="right", padx=(4, 0))
-        ttk.Button(header, text="Закрыть",
+        ttk.Button(header, text=tr("zakryt"),
                    command=win.destroy,
                    style="Smooth.TButton").pack(side="right")
         body = ttk.Frame(frame)
@@ -2446,10 +2323,12 @@ class App:
     def _copy_text(self, text: str):
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
-        self.log(f"$ скопировано ({len(text)} симв.)")
+        self.log("$ " + tf("msg_copied", n=len(text)))
 
+    # ==========================================================
+    #  ГОРЯЧИЕ КЛАВИШИ
+    # ==========================================================
     def _bind_hotkeys(self):
-
         r = self.root
         r.bind("<F1>", lambda e: self.show_help())
         r.bind("<F2>", lambda e: self._apply_theme("dark"))
@@ -2465,22 +2344,22 @@ class App:
     def show_help(self):
         try:
             for idx in range(self.tabs.index("end")):
-                if self.tabs.tab(idx, "text") == "О программе":  # ← было "Справка"
+                if self.tabs.tab(idx, "text") == tr("o_programme"):
                     self.tabs.select(idx)
                     return
         except Exception:
             pass
 
         messagebox.showinfo(
-            "О программе",
-            "Esolang Translator 2.5\n"
+            tr("o_programme"),
+            "Esolang Translator 2.6\n"
             "MIT License · © 2026\n\n"
-            "F1 — эта вкладка\n"
-            "F2 / F3 / F4 — тёмная / светлая / чёрная темы\n"
-            "F5 — Перевести\n"
-            "F6 — Запустить\n"
-            "Ctrl+O — Открыть файл\n"
-            "Ctrl+S — Сохранить результат\n"
-            "Ctrl+L — Загрузить свой язык из файла\n"
-            "Ctrl+` — Развернуть / свернуть терминал"
+            "F1 — help\n"
+            "F2 / F3 / F4 — dark / light / black themes\n"
+            "F5 — Translate\n"
+            "F6 — Run\n"
+            "Ctrl+O — Open file\n"
+            "Ctrl+S — Save result\n"
+            "Ctrl+L — Load custom language\n"
+            "Ctrl+` — Toggle terminal"
         )
