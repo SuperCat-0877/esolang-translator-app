@@ -11,26 +11,35 @@
 
 ## English
 
-**Esolang Translator** is an open-source IDE for 43 esoteric and regular programming languages. You can translate code between any pairs, write in visual 2D editors (like Piet and Rivulet), or run code in an isolated sandbox.
+**Esolang Translator** is an open-source IDE for 43 programming languages, including both esoteric and mainstream ones. It can translate code between any pair of supported languages, provides visual 2D editors (such as Piet and Rivulet), and can run code in an isolated sandbox.
 
-It’s a WIP project and my first big one, so expect bugs. English is not my first language, so if you see a mistake in the UI or this text, please let me know!
+This is a work-in-progress project and my first large one, so bugs are possible. English is not my first language; if you notice a mistake in the UI or in this README, please let me know.
 
 ### Screenshots
-*(Scroll down to see screenshots in the Russian section)*
 
-### What it can do
-- **Translate:** 1746 translation directions (e.g., Python to Brainfuck).
-- **Visualize:** Built-in 2D editors for Piet, Rivulet, and a Piet-ASM text assembler.
-- **Run:** Isolated sandbox for safe code execution.
-- **Customize:** 38 themes and a plugin system to add your own languages.
-- **Languages:** 43 total (Python, C++, JS, Brainfuck, Whitespace, Malbolge, etc.).
+Translation between languages:
+![Translation between languages](docs/screenshots/main.png)
 
-> ⚠️ **Note about BlockPiet and BrainPiet:** These are project-internal variants of Piet, not official languages. They are here to demonstrate visual programming. If you want the real thing, use the standard "Piet" or "Brainfuck" in the language list.
+Rivulet editor:
+![Rivulet editor](docs/screenshots/rivulet.png)
 
-### How to install
+Piet-ASM text assembler:
+![Piet-ASM text assembler](docs/screenshots/piet_asm.png)
+
+### Features
+- **Translation:** 1,746 translation directions (for example, Python → Brainfuck).
+- **Visual editors:** Built-in 2D editors for Piet and Rivulet, plus a Piet-ASM text assembler.
+- **Sandbox:** Run code safely in an isolated environment.
+- **Customization:** 38 themes and a plugin system for adding your own languages.
+- **Languages:** 43 languages in total (Python, C++, JavaScript, Brainfuck, Whitespace, Malbolge, etc.).
+- **UI languages:** 6 interface languages.
+
+> ⚠️ **Note about BlockPiet and BrainPiet:** These are project-internal variants of Piet, not official languages. They exist to demonstrate visual programming. If you want the real languages, choose standard **Piet** or **Brainfuck** from the language list.
+
+### Installation
 1. Go to [**Releases**](https://github.com/SuperCat-0877/esolang-translator-app/releases).
-2. Download `EsolangTranslator.exe` and run it. (No Python installation needed).
-*For Windows 7, you will need to build it yourself with Python 3.8.*
+2. Download `EsolangTranslator.exe` and run it. Python is not required.
+   *For Windows 7, you will need to build it yourself with Python 3.8.*
 
 Or run from source:
 ```bash
@@ -38,68 +47,73 @@ git clone https://github.com/SuperCat-0877/esolang-translator-app.git
 cd esolang-translator-app
 pip install -r requirements.txt
 python Main.py
-Feedback
-I spent 2 months on this and I'm sure there are small errors I missed. Please don't be angry if something breaks!
-Email me at Kanadegameyalybly@gmail.com or open an Issue on GitHub. I read everything.
+```
 
-↑ Back to top
+### Feedback
+I spent about 2 months on this project, and I'm sure there are small issues I missed. Please don't be too harsh if something breaks.
 
-Russian
-Esolang Translator — это среда разработки для 43 эзотерических и обычных языков. Программа умеет переводить код между любыми парами, визуализировать 2D-языки (Piet, Rivulet) и запускать код в изолированной песочнице.
+Email me at **Kanadegameyalybly@gmail.com** or open an Issue on GitHub. I read everything.
 
-Это мой первый большой проект (и он еще в разработке), так что в нем могут быть баги. Я пишу его около 2 месяцев. Пожалуйста, не судите строго, и если найдете ошибку — напишите!
+[↑ Back to top](#esolang-translator)
 
-Скриншоты
-Перевод между языками
-https://docs/screenshots/main.png
+## Russian
 
-Редактор Rivulet
-https://docs/screenshots/rivulet.png
+**Esolang Translator** — это open-source IDE для 43 языков программирования, включая эзотерические и обычные. Программа умеет переводить код между любой парой поддерживаемых языков, содержит визуальные 2D-редакторы (например, Piet и Rivulet) и запускает код в изолированной песочнице.
 
-Piet-ASM (текстовый ассемблер)
-https://docs/screenshots/piet_asm.png
+Это мой первый большой проект, и он всё ещё в разработке, поэтому возможны баги. Я работаю над ним около 2 месяцев. Пожалуйста, не судите строго; если найдёте ошибку или опечатку — напишите мне.
 
-Что умеет
-1746 направлений перевода (например, из Python в Brainfuck).
+### Возможности
+- **Перевод:** 1746 направлений перевода (например, Python → Brainfuck).
+- **Визуальные редакторы:** встроенные редакторы для Piet и Rivulet, а также текстовый ассемблер Piet-ASM.
+- **Песочница:** безопасный запуск кода в изолированной среде.
+- **Настройка:** 38 тем и система плагинов для добавления собственных языков.
+- **Языки:** 43 языка (Python, C++, JavaScript, Brainfuck, Whitespace, Malbolge и др.).
+- **Интерфейс:** 6 языков интерфейса (переводы делал я сам, поэтому они могут быть немного забавными).
 
-Визуальные редакторы для Piet и Rivulet.
+> ⚠️ **Про BlockPiet и BrainPiet:** это внутренние вариации Piet, созданные для демонстрации визуального программирования. Это не официальные языки. Если нужен чистый Piet или Brainfuck — выбирайте их в списке языков.
 
-Песочница для безопасного запуска.
+### Установка
+1. Перейдите в [**Releases**](https://github.com/SuperCat-0877/esolang-translator-app/releases).
+2. Скачайте `EsolangTranslator.exe` и запустите. Python устанавливать не нужно.
+   *Для Windows 7 нужна отдельная сборка под Python 3.8.*
 
-38 тем и поддержка плагинов.
-
-6 языков интерфейса (перевод делал я сам, так что он может быть немного смешным).
-
-⚠️ Про BlockPiet и BrainPiet: Это внутренние вариации Piet, созданные для демонстрации визуального программирования. Это не официальные языки. Если нужен чистый Piet или Brainfuck — выбирайте их в списке.
-
-Как установить
-Перейдите в Releases.
-
-Скачайте EsolangTranslator.exe и запустите. (Python ставить не нужно).
-Для Windows 7 нужна отдельная сборка под Python 3.8.
-
-Или из исходников:
-
-bash
+Или запуск из исходников:
+```bash
 git clone https://github.com/SuperCat-0877/esolang-translator-app.git
 cd esolang-translator-app
 pip install -r requirements.txt
 python Main.py
-Обратная связь
-Если что-то сломалось или вы нашли опечатку — пишите на Kanadegameyalybly@gmail.com или создавайте Issue на GitHub. Я читаю всё.
+```
 
-↑ Наверх
+### Обратная связь
+Если что-то сломалось или вы нашли опечатку — напишите на **Kanadegameyalybly@gmail.com** или создайте Issue на GitHub. Я читаю всё.
 
-Deutsch
-Esolang Translator ist eine Open-Source-IDE für 43 esoterische und reguläre Programmiersprachen. Es übersetzt Code zwischen allen Paaren, bietet 2D-Editoren (Piet, Rivulet) und eine Sandbox. Es ist ein WIP-Projekt. Wenn du Fehler findest, schreib mir bitte! Details auf Englisch.
+[↑ Наверх](#esolang-translator)
 
-Español
-Esolang Translator es un IDE de código abierto para 43 lenguajes (esotéricos y regulares). Traduce código entre pares, incluye editores 2D (Piet, Rivulet) y un sandbox. Es un proyecto WIP. ¡Si encuentras errores, avísame! Detalles en inglés.
+## Deutsch
 
-Français
-Esolang Translator est un IDE open-source pour 43 langages (ésotériques et classiques). Il traduit le code entre paires, inclut des éditeurs 2D (Piet, Rivulet) et un bac à sable. C'est un projet WIP. Si vous trouvez des erreurs, dites-le-moi ! Détails en anglais.
+**Esolang Translator** ist eine Open-Source-IDE für 43 Programmiersprachen, darunter sowohl esoterische als auch reguläre Sprachen. Sie übersetzt Code zwischen jedem unterstützten Sprachpaar, bietet visuelle 2D-Editoren (z. B. Piet und Rivulet) und führt Code in einer isolierten Sandbox aus.
 
-Italiano
-Esolang Translator è un IDE open-source per 43 linguaggi (esoterici e regolari). Traduce codice tra coppie, include editor 2D (Piet, Rivulet) e una sandbox. È un progetto WIP. Se trovi errori, fammelo sapere! Dettagli in inglese.
+Das Projekt befindet sich in Entwicklung. Wenn du Fehler findest, schreib mir bitte! Weitere Details findest du in der englischen Sektion.
+
+## Español
+
+**Esolang Translator** es un IDE de código abierto para 43 lenguajes de programación, tanto esotéricos como convencionales. Traduce código entre cualquier par de lenguajes compatibles, incluye editores visuales 2D (como Piet y Rivulet) y ejecuta código en un sandbox aislado.
+
+Es un proyecto en desarrollo. ¡Si encuentras errores, avísame! Los detalles completos están en la sección en inglés.
+
+## Français
+
+**Esolang Translator** est un IDE open-source pour 43 langages de programmation, ésotériques et classiques. Il traduit le code entre n'importe quelle paire de langages pris en charge, propose des éditeurs visuels 2D (comme Piet et Rivulet) et exécute le code dans un bac à sable isolé.
+
+C'est un projet en cours de développement. Si vous trouvez des erreurs, dites-le-moi ! Les détails complets se trouvent dans la section anglaise.
+
+## Italiano
+
+**Esolang Translator** è un IDE open-source per 43 linguaggi di programmazione, sia esoterici che tradizionali. Traduce codice tra qualsiasi coppia di linguaggi supportati, include editor visuali 2D (come Piet e Rivulet) e esegue il codice in una sandbox isolata.
+
+È un progetto in sviluppo. Se trovi errori, fammelo sapere! I dettagli completi sono nella sezione inglese.
+
+---
 
 © 2026 Esolang Translator · MIT License
